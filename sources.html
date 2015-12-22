@@ -7,56 +7,99 @@
 <body>
     <h1>Data Sources</h1>
     <p>Links and descriptions for internet-hosted data of possible use when demonstrating data science
-    projects</p>
-    <h5>Collections</h5>
+    projects.</p>
+    <h3>Collections</h3>
     <ul>
         <li>
-            <b>sklearn</b>
+            <b>sklearn</b> - Examples for pythonic data science. skl.fetch_* to download, data.load_* to load to memory.
+            Stored as sklearn input vectors. Includes downloading of various image and vector-based data ideal for learning.
+            <br><a href="http://scikit-learn.org/stable/datasets/index.html">URL</a>
         </li>
         <li>
-            <b>Seaborn</b>
+            <b>Seaborn</b> - Used in <a href="http://stanford.edu/~mwaskom/software/seaborn/">seaborn</a> examples.
+            Available simply as sns.load_dataset(name); list with sns.get_dataset_names().
+            The URL describes the origin of the datasets.
+            <br><a href="https://github.com/mwaskom/seaborn-data">URL</a>
         </li>
         <li>
-            <b>R</b>
+            <b>R</b> - Since R is common in data science/machine learning, these are commonly seen. Many can be loaded
+            automatically with <a href="http://statsmodels.sourceforge.net/0.6.0/datasets/index.html">statsmodels</a>.
+            <br><a href="http://www.rdatamining.com/resources/data">URL</a>
         </li>
         <li>
-            <b>Data shader</b>
+            <b>Data shader</b> - Some examples of using some of the data sources on this page, with some further details
+            of what processing might be required for each.
+            <br><a href="http://continuumio.github.io/datashader/">URL</a>
         </li>
         <li>
-            <b>Other</b>
+            <b>Other</b> - miscellaneous collection of all sorts of data that might be useful.
+            <br><a href="https://archive.org/details/datasets">URL</a>
         </li>
     </ul>
-    <h5>General</h5>
+    <h3>General</h3>
     <ul>
         <li>
-            <b>Faces</b>
+            <b>Faces</b>  - See <a href="https://github.com/ContinuumIO/image-analyzer/blob/master/load_data.py">this example</a>
+            for how to use these images, common for face detection problems.
+            <a href="http://vasc.ri.cmu.edu/idb/images/face/frontal_images/">Description</a>
+            <br><a href="http://vasc.ri.cmu.edu/idb/images/face/frontal_images/images.tar">URL</a>
         </li>
         <li>
-            <b>Gutenberg</b>
+            <b>GDELT</b>
+            <br><a href="http://gdeltproject.org/">URL</a>
         </li>
         <li>
-            <b>Flickr</b>
+            <b>Gutenberg</b> - Full text of books out of copyright, one file per book (each with a short
+            notice at the start). They are simply numbered, going up to the 10,000s; the example is
+            Pride and Prejudice.
+            <br><a href="http://www.gutenberg.org/cache/epub/1342/pg1342.txt">URL</a>
         </li>
         <li>
-            <b>NYC Taxi</b>
+            <b>Flickr</b> - Photosets. You will need to register and obtain an API key.
+            The following code shows a possible use.
+            <br>photoset = requests.get( url ).json()
+            <br>photo = photoset['photoset']['photo'][0]
+            <br>flickr_url = "https://c2.staticflickr.com/{farm}/{server}/{id}_{secret}_n.jpg".format(**photo)
+            <br>import skimage.io
+            <br>im = skimage.io.imread(flickr_url)
+            <br><a href="https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&api_key=ea20d74a2a1d64e36fe9ea3957b5e07c&photoset_id=72157641959260094&format=json&nojsoncallback=1">URL</a>
         </li>
         <li>
-            <b>Wikipedia</b>
-        </li>
+            <b>NYC Taxi</b> - JSON lines describing trips in NYC in 2012. In the example URL, the integer is in
+            the range 0-12.
+            <br><a href="https://nyctaxitrips.blob.core.windows.net/data/trip_data_1.csv.zip">URL</a>
+       </li>
         <li>
-
+            <b>Wikipedia</b> - Full dump of all articles as of September 2015.
+            <br><a href="https://dumps.wikimedia.org/enwiki/20150901/enwiki-20150901-pages-articles-multistream.xml.bz2">URL</a>
         </li>
     </ul>
-    <h5>Streaming</h5>
+    <h3>Streaming</h3>
     <ul>
         <li>
-            <b>Met office</b>
+            <b>Open weather</b> - Hourly (or less) free weather information from around the world. Register
+            for an API id/key pair and read the description <a href="http://openweathermap.org/current">here</a>.
+            <br><a href="http://api.openweathermap.org/data/2.5/forecast/city?id={}&APPID={}&q=London">URL</a>
         </li>
         <li>
-            <b>Weather APIs</b>
+            <b>Met office</b> - Many national weather services also provide measurements and predictions.
+            This reference is for the UK Met-Office.
+            <br><a href="http://www.metoffice.gov.uk/media/pdf/3/0/DataPoint_API_reference.pdf">URL</a>
         </li>
         <li>
-            <b>USA government</b>
+            <b>Weather APIs</b> - Collection of weather-providing APIs on the web, with some descrition of
+            each.
+            <br><a href="http://www.programmableweb.com/news/top-10-weather-apis/analysis/2014/11/13">URL</a>
+        </li>
+        <li>
+            <b>Nextbus transit</b> - GPS bus locations and per-stop predictions in real time (~1min updates) for
+            several major North Americal cities.
+            <br><a href="https://www.nextbus.com/xmlFeedDocs/NextBusXMLFeed.pdf">URL</a>
+        </li>
+        <li>
+            <b>USA government</b> - Stream of URLs as they are fed through a minimizer. Other stream and
+            REST end-points are also <a href="https://www.usa.gov/developer">described</a>.
+            <br><a href="http://developer.usa.gov/1usagov">URL</a>
         </li>
     </ul>
 </body>
