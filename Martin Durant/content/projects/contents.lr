@@ -1,0 +1,15 @@
+title: Projects
+---
+body:
+
+Some software I am involved in:
+
+- [Intake](https://intake.readthedocs.io): a broad library for data ingest and cataloguing
+- [fsspec](https://filesystem-spec.readthedocs.io/en/latest/?badge=latest): unifying python file-system interfaces
+- [fastparquet](http://fastparquet.readthedocs.org) : a python library for efficient, fast tabular data storage and retrieval
+- [dask](http://dask.pydata.org) and [distributed](http://distributed.readthedocs.io) : flexible parallel computation engine
+
+(older)
+- [anaconda navigator](https://docs.continuum.io/anaconda/navigator) : desktop front-end to the anaconda open data science distribution, in pyqt
+- [anaconda repo](https://docs.continuum.io/anaconda-repository/) and [AEN](https://docs.continuum.io/ae-notebooks/) : enterprise-level solutions for library and data distribution and collaboration
+- [ADaM](https://docs.continuum.io/anaconda-adam/) and its predecessor anaconda-cluster : create a big data cluster and manage tools remotely

@@ -1,0 +1,59 @@
+title: Python and Big Data storage
+---
+author: Martin Durant
+---
+pub_date: 2016-12-21
+---
+twitter_handle: martin_durant_
+---
+body:
+
+The python ecosystem is excellent for single-machine data processing and data science using popular packages such as numpy, scipy, pandas, sklearn and many others.
+
+Increasingly, the volume of data available for processing is such that single-machine, in memory analysis is no longer an option. Tools such as [dask](http://dask.pydata.org)/[distributed](http://distributed.readthedocs.io) allow the use of familiar python-based workflows for larger-than-memory and distributed processing. Similarly, work has been progressing to allow pythonic access to Big Data file formats such as avro ([cyavro](https://github.com/MaxPoint/cyavro), [fastavro](https://github.com/tebeka/fastavro)) and parquet ([fastparquet](https://fastparquet.readthedocs.io)) to allow python to inter-operate with other Big Data frameworks.
+
+## Big Data stores
+
+Pushing data through some CPU cores to produce an output is only one side of the story. The data needs to first be accessible in a data storage which is accessible to the processing nodes, and possibly also for long-term archival.
+
+We have built out a number of python libraries for interacting with Big Data storage. They offer a consistent python interface for file-system like operations (mkdir, du, rm, mv, etc.), and a standard python file-like object which can be directly used with other python libraries expecting to read from files.
+
+In chronological order:
+- [hdfs3](http://hdfs3.readthedocs.io/), an interface to the HDFS distributed file-system, using the C++ *libhdfs3* library
+- [s3fs](s3fs.readthedocs.io), an interface to Amazon's S3 remote store, using the *boto3* library
+- [adlfs](https://github.com/Azure/azure-data-lake-store-python), and interface to Microsoft's Azure Datalake Store using WebHDFS-like HTTP
+
+Example:
+```python
+>>> import s3fs
+>>> s3 = s3fs.S3FileSystem(anon=True)
+>>> s3.ls('mybucket/data/file.csv.gz', detail=True)
+[{'ETag': '"f7f330d515645996bb4b40c74fdf15c8-2"',
+  'Key': 'data/file.csv.gz',
+  'LastModified': datetime.datetime(2016, 7, 5, 18, 28, 13, tzinfo=tzutc()),
+  'Size': 127162941,
+  'StorageClass': 'STANDARD'}]
+>>> with s3.open('mybucket/data/file.csv.gz', 'rb') as f:
+        df = pd.read_csv(gzip.GzipFile(fileobj=f, 'rb'))
+```
+
+Other good things include:
+- loading of blocks from the data-stores, perhaps delimited by some byte-string like `b'\n'`;
+- various ways to deliver credentials to the different backends, including kerberos ticketing for hdfs;
+- full binary writing support;
+- control over buffering behaviour for performance tuning;
+- intelligent serialization allowing sharing filesystem and file objects between threads and processes, without passing credentials in-the-clear. Dask-distributed can refer to different backends by using URLs, e.g., `"s3://mybucket/keys.*.csv"`;
+- s3fs and hdfs3 also have mutable-mapping interfaces, so that you can treat the underlying files as a dict-like key-value store, or link with higher-level libraries like [zarr](https://github.com/alimanfoo/zarr) for data storage; 
+- specific options for various backends, such as High Availability for HDFS and requestor pays for S3.
+
+Things that remain to be done:
+- direct text mode (although `io.TextIOWrapper` can be used)
+
+The future:
+- A similar connector for Google Cloud Storage is in the works
+
+### Afterthoughts
+
+All the file-system interfaces mentioned here are open-source, and were supported in their development by Continuum Analytics.
+---
+_discoverable: yes
