@@ -105,6 +105,23 @@ may spur others to make more interesting applications. For example, it would be 
 events to [River](https://github.com/online-ml/river/) for on-line real-time machine learning of users'
 behaviour. Imagine streamz feeding River!
 
+*EDIT*
+
+With the new `ReactiveHTML` component in Panel, it will be possible to respond to arbitrary DOM events
+(thanks for the example, [@philippjfr](https://github.com/philippjfr) )
+
+```python
+class Image(ReactiveHTML):
+    src = param.String()
+    _html = '<img id="img" src="${src}"></img>'
+
+img = Image(src='dice.png', width=500, height=400)
+img.on_event('img', 'mousemove', q.put)
+```
+
+*EDIT*
+
+`ipywidgets` should be trivial to support with the same mechanism.
 
 ---
 author: Martin Durant
@@ -115,4 +132,4 @@ twitter_handle: martin_durant_
 ---
 _hidden: no
 ---
-_discoverable: no
+_discoverable: yes
