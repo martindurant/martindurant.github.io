@@ -1,0 +1,128 @@
+title: What’s new with fastparquet?
+---
+body:
+
+
+Over the last six months, I have put considerable effort into modernizing and improving fastparquet; the Python parquet read/write package that has been serving the PyData community for five years. With these new additions, there are several features that are now possible, many things are faster, and most importantly, nothing is slower (at least on the read side!)
+
+A little background on myself, I started my career as an astrophysicist and worked in multiple academic positions, including medical imaging research. After this, I became a data scientist, and have been a member of the open source Dask, Intake, Streamz, fsspec and Zarr maintenance teams, with specializations in data access, remote filesystems and data formats. I have been at Anaconda for six years as a software engineer where I’ve primarily worked on our open-source team.
+
+## Background
+
+Fastparquet was the first reader and writer for parquet format big data which worked in Python without needing Spark or other non-Python tools. It offers performant conversion to/from pandas DataFrames, and is well integrated with Dask. Until the arrival of `pyarrow`'s parquet integration, it was the only vectorized parquet engine (see also the earlier parquet-python, with which it shares some code).
+
+As of the start of 2021, `fastparquet` remained one of the major packages for pandas<->parquet, with ~1M downloads per month according to pypistats. However, it had not seen any substantial development in some time.
+
+## Fastparquet’s Improvement Plan
+
+In April 2021, I created an issue detailing things that I viewed as important improvements to implement. This list has been augmented in the months since, but most of the items were there in the initial form. As you can see, almost all of them have been fulfilled (see also The Future section, below).
+
+The implementation of the various tasks resulted in a slew of releases, and here we will compare the read performance of versions 0.7.1 and 0.5.0.
+
+### Dependencies
+
+The cramjam package appeared in 2020, linking Rust implementations of the compression codecs needed by parquet (except LZO, which no one uses!). This simplified fastparquet's dependencies and users no longer have to seek around for extra packages for snappy, brotli, or zstd. In addition, `cramjam` also can be faster in some circumstances.
+
+Fastparquet was originally built with acceleration provided by Numba. This worked very well for en/decoding the various byte representations possible in the parquet spec. Unfortunately, Numba does not handle (Python) strings, so there was also some Cython code present too.
+
+We rewrote all the Numba code to Cython. This did not result in better performance, but reduced the size of the environment needed (no LLVM!) and eliminates some runtime compilation.
+
+Finally, in PR, we are close to eliminating the need for `thrift`, using our own implementation.
+
+**Conda environment size**
+
+| 0.5.0 | 0.7.1
+|-------|------
+| 378MB | 263MB
+
+(With latest Python, pandas, etc, and compressors included with 0.5.0)
+
+### Feature Development
+
+We’ve made quite a few new changes to improve fastparquet, so I outlined some of the highlights that make the experience better for the user.
+
+Loading of directories without a `_metadata` file: this was always possible, but required the user to explicitly get a list of files first
+Read and write of "data page header 2": added to the parquet spec a long time ago, only a few frameworks are starting to produce V2 files, but we need to be able to read them. It also happens that there are genuine performance benefits to using V2.
+Encoding types RLE_DICT and DELTA, for compatibility
+Nullable types and ns-resolution times, for better matching of pandas and parquet type systems. Nullable types are on by default, so optional int columns become pandas nullable Int columns on read, but the old behavior of converting to float and using NaN to mark nulls is still available.
+Row-filtering: to only produce the DataFrame for the data you actually want. This is a two-step process, one to load the columns you filter on and one to apply the filter. The aim is not speed, but lower memory footprint (since parquet is a block-wise format, you do end up reading the same number of bytes).
+
+### Performance
+
+Most of the effort went here, specifically the read-side performance. Here are some selected benchmarks. Keep in mind that benchmarks are biased and that the same measuring techniques were used to guide the optimization process. Numbers are relative and as given by my machine.
+
+
+**Open dataset "split"**
+
+This is one of fastparquet's test suite data-sets, with many files and not much data. Times in ms.
+
+| 0.5.0 | 0.7.1 | PR#633
+|-------|-------|-------
+| 2.66  | 0.81  | 0.31
+
+Some improvements were made in `fsspec` around listing and getting information
+about local files. Similarly, remote files will be fetched concurrently, when no
+global metadata is available.
+
+**Time to first read**
+
+Time to import, open and read the same “split” dataset, in seconds (i.e., this number is much bigger than in the previous subsection!).
+
+| 0.5.0 | 0.7.1
+|-------|------
+| 3.4   | 0.68
+
+The difference is mostly due to no runtime compilation in 0.7.1. The import time is about the same and dominated by pandas.
+
+**Column read time**
+
+Based on the benchmarks script at fastparquet/benchmarks/columns.py, using columns of random data. As opposed to the "split" dataset, above, these have sufficient data volume such that file opening and metadata parsing are insignificant. Times are in relative units.
+
+|         | 0.5.0   |         | 0.7.1,v1  |            | 0.7.1,v2  |       |
+|---------|---------|---------|-----------|------------|-----------|-------|
+|         | uncomp  | zstd    | uncomp    | zstd       | uncomp    | zstd  |
+| bool    | 4.0     | 5.9     | 6.3       | 6.1        | 6.2       | 6.4   |
+| bytes   | 66      | 107     | 65        | 66         | 6.2       | 62    |
+| cats    | 7.3     | 22.9    | 6.8       | 21.8       | 6.5       | 21.4  |
+| float64 | 52      | 149     | 43        | 146        | 23.9      | 133   |
+| time64  | 110     | 259     | 76        | 223        | 39.2      | 182   |
+| uint8   | 20.0    | 107     | 19.3      | 76         | 18.5      | 75    |
+| UTF8    | 191     | 197     | 113       | 111        | 113       | 112   |
+
+We can see that 0.7.1 is generally faster or the same (except marginally for bool),
+and that using V2 pages can make a big difference for float and time (and int32/64, not included). We also see that the zstd compression is the same or better and, again, V2 can make a positive impact. This difference was less apparent for gzip (always slow) and snappy (always fast, but no effective compression for random data).
+
+## The Future
+
+The only major effort remaining from the April plan is an implementation of thrift
+reading/writing that is independent of the thrift package. PR#663 does this work, and although
+rough edges remain, raw performance is very encouraging:
+
+Time to parse "split" dataset metadata block of bytes in memory, in ms
+
+| 0.5.0 | PR#633
+|-------|------
+| 184   | 52
+
+Round-trip time with `pickle.dumps/pickle.loads`
+
+| 0.5.0 | PR#633
+|-------|------
+| 270   | 137
+
+Obviously, new things have occurred during this process, and there are more things that
+could be done, for both performance and features. I would that the current situation is good,
+and that fastparquet continues to thrive!
+
+
+
+---
+author: Martin Durant
+---
+pub_date: 2021-2-26
+---
+twitter_handle: martin_durant_
+---
+_hidden: no
+---
+_discoverable: no
