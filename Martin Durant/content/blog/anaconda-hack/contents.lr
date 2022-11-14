@@ -77,7 +77,7 @@ Proof of correctness:
 
 ```python
 >>> import pandas_decimal
->>> s = pd.Series([0.1, 0.1, 0.1], "decimal[2]"
+>>> s = pd.Series([0.1, 0.1, 0.1], "decimal[2]")
 >>> s
 0   0.10
 1   0.10
