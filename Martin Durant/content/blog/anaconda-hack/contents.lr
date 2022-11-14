@@ -1,0 +1,96 @@
+title: Anaconda hack: pandas decimal type!
+---
+author: Martin Durant
+---
+pub_date: 2022-11-14
+---
+twitter_handle: martin_durant_
+
+---
+body:
+
+It is little known outside of Anaconda, but we arrange quarterly
+hack days, in which we can do work unrelated to out day-to-day
+activities, together with colleagues from any team.
+
+So, we did this last week, and I decided to lead a small project
+to fix what seems to mie a critical missing feature in pandas: a fixed
+precision decimal type. Thanks to Ryan Keith for helping out.
+
+### What is a decimal type
+
+In python, and most computer languages, non-integer numbers are usually
+stored internally as floating point. This leads to plenty of quirks and
+unexpected errors
+
+```python
+>>> 0.1 + 0.1 + 0.1 == 0.3
+False
+```
+
+This is also true in Pandas
+
+```python
+>>> import pandas as pd
+>>> s = pd.Series([0.1, 0.1, 0.1])
+>>> s.sum() == 0.3
+False
+```
+
+But we can get exact and expected outcomes by using a decimal type:
+integers with an integer power-of-ten multiplier, so that "0.1"
+is represented as the integer 1, and factor of 10**-1.
+
+Although python already has `decimal.Decimal`, we don't want python
+instances stored in pandas, because that is far too slow - we want
+something that vectorises.
+
+I should say, it was surprising to find there was no existing
+decimal type for pandas, given pandas' origins in finance. Scientists usually are
+ok with uncertainty, since computer calculations are probably much
+more precise than any measurement, but finance values are exact.
+
+
+### Implementation
+
+We made a "decimal" extension type for pandas.
+
+For now, see [this repo](https://github.com/martindurant/pandas-decimal) in
+my personal github. We followed the template established by Doug Davis and
+myself in [`awkward-pandas`](https://github.com/intake/awkward-pandas);
+having this start was crucial to getting anything done in two days.
+
+The hardest part was filling out the comparison and arithmetic `binop`s,
+in which we need to take account of the type of the "other":
+- int or float scalar
+- numpy-like array
+- another Decimal series, with some other scale factor
+
+### Outcome
+
+See the [demo notebook](https://nbviewer.org/github/martindurant/pandas-decimal/blob/main/notebooks/demo.ipynb)!
+We have successful workflows, we are correct, and hundreds of times faster than putting
+`decimal.Decimal` instances into a pandas object series. We even have a handful of
+passing tests.
+
+Proof of correctness:
+
+```python
+>>> import pandas_decimal
+>>> s = pd.Series([0.1, 0.1, 0.1], "decimal[2]"
+>>> s
+0   0.10
+1   0.10
+2   0.10
+dtype: decimal[2]
+>>> s.sum() == 0.3
+True
+```
+
+That's it!
+
+### Next
+
+I'm not sure how to release this or whether anyone is interested. We shall find out,
+please comment on the repo.
+
