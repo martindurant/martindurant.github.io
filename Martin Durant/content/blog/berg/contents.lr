@@ -41,9 +41,10 @@ So I got to work...
 
 ### Outcome
 
-So there is a repository of my code:
-https://github.com/martindurant/daskberg
-It shows a full Iceberg workflow on some super simple test data, but
+Here is the repository of my code:
+https://github.com/martindurant/daskberg . This did not cost me a huge
+amount of effort and was fun and educational to dig into.
+The README example shows a full Iceberg workflow on some super simple test data, but
 already enough to show the power of the code. This is an open invitation
 for people to try it out and see how far you can push it!
 
