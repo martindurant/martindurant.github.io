@@ -1,0 +1,90 @@
+title: async zarr
+---
+author: Martin Durant
+---
+pub_date: 2022-12-03
+---
+twitter_handle: martin_durant_
+---
+body:
+
+<img src="https://numfocus.org/wp-content/uploads/2020/01/Zarr_LogoOptions_FINAL_Horizontal_Pink300x300.png"
+alt="zarr" style="float:right;width=250px;"/>
+
+## TL;DR
+
+Another one of my little hacks this last quarter. The code presented here
+makes zarr the first async-ready pydata IO package. This might be important
+if you are already using async code, but it's particularly a big deal
+in the era of [PyScript](https://pyscript.net/)
+
+### Introduction
+
+I hope everyone is enjoying my catching up with blogging duties, describing
+all the little side-projects I've done over the last few months. I should
+maybe also write about my core activities sometime...
+
+In this article, I'll first describe the two technologies involved here,
+the two words of the title, and then how I am combining them. There is a
+proof of concept in the linked repo at https://github.com/martindurant/async-zarr ,
+
+#### What is Zarr
+
+[zarr](https://zarr.readthedocs.io/en/stable/) is a library for n-dimensional array-oriented
+IO. It is cloud-native, offering efficient concurrent and parallel chunkwise access
+to data. The style of access is essentially numpy-like slicing, but a dataset
+can contain a hierarchical tree of related arrays, perhaps (but not necessarily)
+adhering to the netCDF data model. It has found a lot of use particularly
+in earth science, climatology and microscopy, as well as other science and engineering
+fields.
+
+Zarr is a very nice clean and simple implementation. The code is very approachable,
+as, as we see here, *hackable*.
+
+Because zarr can optionally do its IO over fsspec, in the case that you access many
+chunks of data in an array at once, those chunks will be fetched concurrently
+behind an async barrier.
+
+#### What is async
+
+Asynchronous programming is a pattern in which most of your code is waiting
+on some external stimulus most of time time. Thus, you can queue up many
+downloads concurrently, and then process the packets as they come in, rather than
+waiting for one stream to end before starting the next one. This is ideal for
+a predominantly IO library like zarr, but not well supported in the
+rest of the pydata landscape. It is far more common a pattern in server applications,
+where processing typically happens as a response to incoming requests. Note:
+the tasks happen on a single thread with an event loop - this is not the same
+as parallelism.
+
+With the arrival of [pyscript](https://pyscript.net/) this year has upended everything!
+When running in the browser, all code is essentially running async, and any
+(HTTP) binary communications *must* be explicitly async, since blocking the
+main browser thread is not allowed.
+
+### Implementation
+
+My attempts are in the repo: https://github.com/martindurant/async-zarr
+This implements both async for normal python and for pyscript - they have the
+same top-level functions, but different storage backends. The README shows how
+to run the code, or you can look at a
+[rendered notebook](https://nbviewer.org/github/martindurant/async-zarr/blob/main/example/notebook.ipynb).
+
+Some notes:
+- the code shamelessly subclasses from zarr, and replicated some of the
+ open functionality in zarr.core.
+- it's pretty short!
+- the CPython and pyodide storage backends are rather similar, except for relying
+ on ``pyodide.http`` and ``aiohttp``, respectively
+- zarr metadata fetching is still sync, only data access is async. This was done
+ for expediency.
+
+### What next?
+
+There are *plenty* of issues to work out with bringing pydata IO to pyscript.
+No other data library has solved this yet, and pyscript demos are having to jump
+through many hoops or rely on text data only, which the whole threading/async
+story stabilises.
+However, my code is usable right now, and might well be useful in non-browser
+async situations too. If we manage to figure out the API ad decent testing regime,
+this package will be published and maybe upstreamed into zarr-python itself.
