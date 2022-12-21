@@ -125,3 +125,7 @@ the two snapshots and provenance in metadata.
 pub_date: 2022-12-21
 ---
 twitter_handle: martin_durant_
+---
+_discoverable: no
+---
+_hidden: yes
