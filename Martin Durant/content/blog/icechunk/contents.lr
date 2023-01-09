@@ -1,31 +1,46 @@
-title: ICECHUNK
+title: Mutable Kerchunk References
 ---
 author: Martin Durant
 ---
 body:
 
-### Iceberg + kerchunk =
-
-# IceChunk
-
+### summary
 
 [Kerchunk](https://fsspec.github.io/kerchunk/) is all about making a virtual
 "reference" filesystem, where each chunk of data points to a byte range in
-some remote file.
+some remote file. These references are usually saved in JSON files elsewhere.
+We can write new data into the references file and update references to
+new locations and save the new reference set, implementing a very rudimentary
+versioning system.
 
 <img src="https://fsspec.github.io/kerchunk/_static/kerchunk.png" alt="kerchunk"
-width=150 style="float:right"/>
+width=50 style="float:right"/>
+<img src="https://zarr.readthedocs.io/en/v2.11.2/_static/logo1.png" alt="kerchunk"
+width=50 style="float:right"/>
+<img src="https://iceberg.apache.org//img/iceberg-logo-icon.png" alt="kerchunk"
+width=50 style="float:right"/>
 
-[Apache Iceberg](https://iceberg.apache.org/) is versioned tabular (parquet) datasets,
-by immutable files and "manifest" listings.
-Here is a little hack to make writable, versionable **array** datasets with
-fsspec's ReferenceFileSystem and zarr. No server required.
 
-You can install the fork that makes this work as follows, although this
-will be making its way into a release sometime soon.
+## Introduction
+
+This idea came about from experimenting with [Apache Iceberg](https://iceberg.apache.org/)'s
+implementation of versioned tabular (parquet) datasets
+by immutable files and "manifest" listings and the conversation started
+by `@rabernat` in
+[this zarr issue](https://github.com/zarr-developers/zarr-specs/issues/154).
+
+In this post, I present little hack project to make ReferenceFileSystem
+writable, so that we can make new versions of an array dataset using zarr.
+No server required.
+
+You can install the fork that makes this work as follows.
 ```
 pip install git+https://github.com/martindurant/filesystem_spec.git@icy
 ```
+The code to allow mutating and saving a ReferenceFileSystem will eventually be merged
+into `fsspec`.
+
+## Example
 
 We start here by running the first part of the 
 [kerchunk tutorial](https://fsspec.github.io/kerchunk/tutorial.html) 
@@ -81,7 +96,7 @@ fs.save_json("air_modified.json")
 
 Now we can load the new reference set, and indeed the values have
 changed. The *unchanged* portion is still loading from remote,
-but the changed version is loading from remote.
+but the changed version is loading from local.
 
 ```python
 fs2 = fsspec.filesystem(
@@ -115,17 +130,18 @@ g = zarr.open(fs.get_mapper())
 ```
 
 So the two reference files are **snapshots** of the data with an
-edit between, and we only saved the one chunk where we actually made a
-change. Iceberg for array data, by the power of kerchunk: Icechunk.
-They could be handily put side by side in an
+edit between, and we only saved new data for the one chunk where we actually made a
+change.
+One might imagine keeping the two dataset specs side by side in an
 [Intake](https://intake.readthedocs.io/en/latest/) catalogue describing
-the two snapshots and provenance in metadata.
+the two snapshots and provenance in metadata. This is clearly not a
+version control system for array data, but perhaps part of one.
 
 ---
-pub_date: 2022-12-21
+pub_date: 2022-01-09
 ---
 twitter_handle: martin_durant_
 ---
 _discoverable: no
 ---
-_hidden: yes
+_hidden: no
