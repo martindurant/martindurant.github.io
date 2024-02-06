@@ -54,7 +54,7 @@
 <p>So you have data that you want to do stuff with. Intake might be the connective
 tissue you are after.</p>
 <p>Intake was originally well received and found a small community of users. However it never
-got the attention or popularity I thought it deserved. So, at the last throw of the dice,
+got the attention or popularity I thought it deserved. So, as one more attempt,
 this is my effort to make it both simpler and more powerful and see if, in a crowded
 marketplace, people want to give Intake a try.</p>
 <h3>What Intake?</h3>
@@ -62,7 +62,9 @@ marketplace, people want to give Intake a try.</p>
 The main docs are at <a href="https://intake.readthedocs.io/en/latest/">https://intake.readthedocs.io/en/latest/</a> , so I won't repeat what is
 written there; but the gist is, data is everything these days, and anything that can be
 done to smooth how to locate, understand and load data, the more effective practitioners
-(data scientists, engineers, AI/ML modelers, analysts) will be.</p>
+(data scientists, engineers, AI/ML modelers, analysts) will be. In the typical scenario,
+a given notebook or script has just some hard-coded URL/path, and the user has no idea
+of the target's provenance.</p>
 <p>Intake is all-python and likes talking to all the packages that make up the "PyData"
 ecosystem (see <a href="https://numfocus.org/sponsored-projects">numfocus</a>, <a href="https://github.com/panstacks/pandata">pandata</a>
 and others). These packages tend to focus on one thing at a time, and play nicely with
@@ -84,7 +86,7 @@ array (tensor) sets can be, and <a href="https://awkward-array.org/">awkward</a>
 the importance of vectorised operations over nested, variable-length data. Defining
 how to load such data can be complex!</p>
 <p>In the meantime, <a href="https://www.dask.org/">dask</a> is not the only parallel compute
-framework around. Ray, polars and others have shows great uptake eith various lazy,
+framework around. Ray, polars and others have shows great uptake with various lazy,
 query-optimised and out-of-core workflows. Old Intake was tied to dask, which was a
 fine choice at the time, but became more obviously outdated.</p>
 <p>There was also <a href="https://github.com/intake/intake/issues/468">pushback</a> against the
@@ -102,7 +104,7 @@ developers' experience with Intake.</p>
 <a href="https://docs.anaconda.com/reusetext/notebook-data-catalog/">public catalog</a>)</li>
 </ul>
 <p>I removed what was unnecessary complexity, but made everything more generic, and
-so general-purpose. We don't depend on Dask, but any compute engine (spark, ray, duck, ...) can and are
+so general-purpose. We don't depend on Dask, but any compute engine (spark, ray, duck, ...) can be and are
 integrated: when a datatype is declared (even something simple like "CSV"), it
 can be read with potentially several packages.</p>
 <p>At its core, Intake is still "simple" and lightweight: it calls functions in other packages,
@@ -117,6 +119,9 @@ can</p>
 <li>add any reader to catalog with setitem</li>
 <li>make new data types and readers with very minimal code</li>
 </ul>
+<p>And here's the current image of all the transforms we currently supports. You can't see the
+detail, and that is the point:</p>
+<p><img src="https://intake.readthedocs.io/en/latest/_images/out.png" alt="Transforms" width="190"/></p>
 
   </div>
 
