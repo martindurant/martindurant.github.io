@@ -24,7 +24,9 @@ Intake's moto has always been: "Taking the pain out of data access and distribut
 The main docs are at https://intake.readthedocs.io/en/latest/ , so I won't repeat what is
 written there; but the gist is, data is everything these days, and anything that can be
 done to smooth how to locate, understand and load data, the more effective practitioners
-(data scientists, engineers, AI/ML modelers, analysts) will be.
+(data scientists, engineers, AI/ML modelers, analysts) will be. In the typical scenario,
+a given notebook or script has just some hard-coded URL/path, and the user has no idea
+of the target's provenance.
 
 Intake is all-python and likes talking to all the packages that make up the "PyData"
 ecosystem (see [numfocus](https://numfocus.org/sponsored-projects), [pandata](https://github.com/panstacks/pandata)
@@ -51,7 +53,7 @@ the importance of vectorised operations over nested, variable-length data. Defin
 how to load such data can be complex!
 
 In the meantime, [dask](https://www.dask.org/) is not the only parallel compute
-framework around. Ray, polars and others have shows great uptake eith various lazy,
+framework around. Ray, polars and others have shows great uptake with various lazy,
 query-optimised and out-of-core workflows. Old Intake was tied to dask, which was a
 fine choice at the time, but became more obviously outdated.
 
@@ -71,7 +73,7 @@ Intake will flourish in situations where:
   [public catalog](https://docs.anaconda.com/reusetext/notebook-data-catalog/))
 
 I removed what was unnecessary complexity, but made everything more generic, and
-so general-purpose. We don't depend on Dask, but any compute engine (spark, ray, duck, ...) can and are
+so general-purpose. We don't depend on Dask, but any compute engine (spark, ray, duck, ...) can be and are
 integrated: when a datatype is declared (even something simple like "CSV"), it
 can be read with potentially several packages.
 
