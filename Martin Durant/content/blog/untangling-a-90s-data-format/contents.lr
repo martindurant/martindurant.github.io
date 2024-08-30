@@ -1,0 +1,74 @@
+title: Untangling a 90s data format
+---
+author: Martin Durant
+---
+pub_date: 2024-08-29
+---
+body:
+
+Summary
+-------
+
+Here is a brief delve into the internals of "HDF4". Although this format has been
+superseded, archival data exists and is still being written in it, because why change
+a pipeline. For the purposes of ``kerchunk``, I was sniped into seeing how hard it
+would be to find the binary buffer offset/sizes in a file, and found out how convoluted
+a file format can get. The result can be seen in a [PR](https://github.com/fsspec/kerchunk/pull/494).
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/HDF_logo_%282017%29.svg/2880px-HDF_logo_%282017%29.svg.png" alt="hdf-logo" width="150"/>
+
+Kerchunk for 90s data
+---------------------
+
+For those that don't know, [kerchunk](https://fsspec.github.io/kerchunk/) is a project for
+bringing archival data into the cloud era. It find the binary buffers within array-oriented
+data formats and presents a virtual `zarr` dataset, so that you can read the data directly
+from remote, with concurrency and parallelism.
+
+Kerchunk already handled HFD5, TIFF, grib2, FITS, netCDF3 and zarr itself. But there are always
+other array storage formats that might be interesting, and it turns out that NASA has a good deal
+of HDF4 (see [here](https://hdfeos.org/zoo/Data_Collection/index.php)). Now, there are some
+readers of this file format for python, particularly `rarsterio/gdal`, ``netcdf4`
+(recent versions) and `satpy`. However, they don't expose the internals of the file, the
+information kerchunk needs.
+
+So I started to read [the 222 page manual](file:///Users/mdurant/Downloads/DS.pdf). Just for fun!
+I conclude that they were after two features common in the 90s:
+- in-place editing of attributes and metadata
+- appending new arrays or extending existing arrays without rewriting the file
+- features were added over time, but none were removed
+
+These concerns only make sense if you are working exclusively with local disk, with `seek()` and
+low latency. None of this is useful for archival data.
+
+Untangling
+----------
+
+Some interesting facets of HDF4:
+- the items in the file are enumerated in a centralized index, but actually it's a linked list,
+  spread throughout the file. Each item is a combination of a class identifier and a reference,
+  and this combination is unique. Each item refers to an offset and length in the file.
+- some of the items are "extended", which means that the offset/length points to another item
+  _not_ listed in the central index. It contains a "special" identifier, and, depending on
+  that type, links to either a linked list or to a chunk manifest
+    - for the linked list variant, you need to follow data items, each sating if it is the last,
+      and giving a pointer to the data; the data is the concatenation of the data sections.
+    - chunk manifests are stored as tables: the special item links to a table description which
+      gives the number of rows and the number of dimension columns; a corresponding data item
+      points to the actual binary of the table (it can be read as a numpy array), but as it happens,
+      this is probably also stored as a linked list extended item.
+    - each row of the chunk manifest points to yet another item, which tells you where the actual data
+      for that chunk is, and if it is compressed (compression seems to be zlib in the example
+      I am working from)
+- special group items include other items (as a list), which can in turn be groups too, and this
+  if how the dataset is built up
+- we realise this must be archival data written in one shot, because the arrays are actually
+  contiguous, and the root group item is the last one
+
+Conclusion
+----------
+
+Well, it turns out that the chunks, in at least the data I've seen, are tiny. That means that
+kerchunking thousands of files might be problematic. However, having some considerable work,
+maybe what I have will be useful to some people. 
