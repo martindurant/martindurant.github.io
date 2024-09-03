@@ -146,8 +146,7 @@ a time when the event loop is longer runnable.
 These changes break async handling of file-like objects (i.e., the results of `open()`). This can
 be fixed with some more work - but it was already somewhat broken, and works fine for sync case.
 
-<script data-goatcounter="https://md-blog.goatcounter.com/count"
- async src="//gc.zgo.at/count.js"></script>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
 
 ---
 author: Martin Durant

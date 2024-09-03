@@ -73,5 +73,4 @@ Well, it turns out that the chunks, in at least the data I've seen, are tiny. Th
 kerchunking thousands of files might be problematic. However, having some considerable work,
 maybe what I have will be useful to some people.
 
-<script data-goatcounter="https://md-blog.goatcounter.com/count"
- async src="//gc.zgo.at/count.js"></script>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
