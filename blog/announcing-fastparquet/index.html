@@ -1,0 +1,255 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Announcing fastparquet — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Announcing fastparquet</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2016-12-06
+  </p>
+  <p>Posted to the world <a href="https://www.continuum.io/blog/developer-blog/introducing-fastparquet">here</a></p>
+<p>A compliant, flexible and speedy interface to Parquet format files for Python. It provides seamless translation between in-memory pandas DataFrames and on-disc storage.</p>
+<p>We will introduce the two functions that will most commonly be used within fastparquet, followed by a discussion of the current Big Data landscape, python's place within it, and then details of how fastparquet fills one of the gaps on the way to building out a full end-to-end Big Data pipeline in python.</p>
+<h2>Teaser</h2>
+<p>New users of fastparquet will mainly use the functions <code>write</code> and <code>ParquetFile.to_pandas</code>. Both functions offer good performance with default values and both have a number of options to improve performance further.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+
+<span class="c1"># write data</span>
+<span class="n">fastparquet</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;SNAPPY&#39;</span><span class="p">)</span>
+
+<span class="c1"># load data</span>
+<span class="n">pfile</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">)</span>
+<span class="n">df2</span> <span class="o">=</span> <span class="n">pfile</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>  <span class="c1"># all columns</span>
+<span class="n">df3</span> <span class="o">=</span> <span class="n">pfile</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;floats&#39;</span><span class="p">,</span> <span class="s1">&#39;times&#39;</span><span class="p">])</span> <span class="c1"># pick some columns</span>
+</pre></div>
+<h2>Introduction: Python and big data</h2>
+<p>Python was named as a favourite tool for data science by <a href="http://www.kdnuggets.com/2016/06/r-python-top-analytics-data-mining-data-science-software.html">45% of data scientists</a> in 2016. Many reasons can be presented for this, and near the top will be:</p>
+<ul>
+<li>Python is very commonly taught at college and university level.</li>
+<li>Python and associated numerical libraries are free and open source.</li>
+<li>The code tends to be concise, quick to write, and expressive.</li>
+<li>An extremely rich ecosystem of libraries exist for not only numerical processing but also other important links in the pipeline from data ingest to visualization and distribution of results.</li>
+</ul>
+<p>"Big data", however, has been typically based on traditional databases and, in latter years, the Hadoop ecosystem. Hadoop provides a distributed file-system, cluster resource management (YARN, Mesos), and a set of frameworks for processing data (map-reduce, pig, kafka, and many more). In the past few years, Spark has rapidly increased in usage to become a major force, even though <a href="http://cdn2.hubspot.net/hubfs/438089/DataBricks_Surveys_-_Content/2016_Spark_Survey/2016_Spark_Infographic.pdf?t=1480707041209">62% of users</a> use Python to execute Spark jobs (via pySpark).</p>
+<p>The Hadoop ecosystem and its tools, including Spark, are heavily based around the Java Virtual Machine (JVM), which creates a gap between the familiar, rich Python data ecosystem and clustered big data with Hadoop. One such missing piece is a data format which can efficiently store large amounts of tabular data, in a columnar layout, and split it into blocks on a distributed file-system.</p>
+<p><a href="https://github.com/Parquet/parquet-format/">Parquet</a> has become the de-facto standard file format for tabular data in Spark, Impala and other clustered frameworks. 
+Parquet provides several advantages relevant to big-data processing:</p>
+<ul>
+<li>columnar storage, only read the data of interest</li>
+<li>efficient binary packing</li>
+<li>choice of compression algorithms and encoding</li>
+<li>split data into files, allowing for parallel processing</li>
+<li>range of logical types</li>
+<li>statistics stored in metadata allow for skipping unneeded chunks</li>
+<li>data partitioning using the directory structure</li>
+</ul>
+<p><strong>fastparquet</strong> bridges the gap to provide native Python read and write access with no need to use Java.</p>
+<p>Until now, Spark's Python interface provided the only way to write Spark files from Python.
+Much of the time is spent in de/serializing the data in the Java-Python bridge. Also note that the times column returned is now just integers rather than the correct datetime type. Not only does fastparquet provide native access to parquet files, it in fact makes the transfer of data to spark much faster.</p>
+<div class="hll"><pre><span></span><span class="c1"># to make and save a large-ish DataFrame</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">10000000</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;ints&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">N</span><span class="p">),</span>
+                   <span class="s1">&#39;floats&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
+                   <span class="s1">&#39;times&#39;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;1980&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">N</span><span class="p">)})</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">pyspark</span>
+<span class="n">sc</span> <span class="o">=</span> <span class="n">pyspark</span><span class="o">.</span><span class="n">SparkContext</span><span class="p">()</span>
+<span class="n">sql</span> <span class="o">=</span> <span class="n">pyspark</span><span class="o">.</span><span class="n">SQLContext</span><span class="p">(</span><span class="n">sc</span><span class="p">)</span>
+</pre></div>
+<p>Using the default spark single-machine configuration cannot handle the above DataFrame (out-of-memory error), so we'll perform timing for 1/10 of the data:</p>
+<div class="hll"><pre><span></span><span class="c1"># sending data to spark via pySpark serialization, 1/10 of the data</span>
+<span class="o">%</span><span class="n">time</span> <span class="n">o</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">(</span><span class="n">df</span><span class="p">[::</span><span class="mi">10</span><span class="p">])</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</pre></div>
+<pre><code>CPU times: user 3.45 s, sys: 96.6 ms, total: 3.55 s
+Wall time: 4.14 s
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># sending data to spark via a file made with fastparquet, all the data</span>
+<span class="n">fastparquet</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;SNAPPY&#39;</span><span class="p">)</span>
+<span class="n">df4</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">parquet</span><span class="p">(</span><span class="s1">&#39;outspark.parq&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</pre></div>
+<pre><code>CPU times: user 2.75 s, sys: 285 ms, total: 3.04 s
+Wall time: 3.27 s
+</code></pre>
+<h1>The fastparquet library</h1>
+<p><code>fastparquet</code> is an open source library providing a Python interface to the Parquet file format. It uses <a href="numba.pydata.org">Numba</a> and NumPy to provide speed, and writes data to and from pandas DataFrames, the most typical starting point for Python data science operations.</p>
+<p><code>fastparquet</code> can be installed using conda:</p>
+<pre><code>&gt; conda install -c conda-forge fastparquet
+</code></pre>
+<p>(currently only available for Python 3)</p>
+<ul>
+<li>The code is hosted on <a href="https://github.com/dask/fastparquet/">GitHub</a></li>
+<li>the primary documentation is on <a href="http://fastparquet.readthedocs.io/">RTD</a></li>
+</ul>
+<p>Bleeding edge installation directly from the GitHub repo is also supported, so long as Numba, pandas, pytest and ThriftPy are installed.</p>
+<p>Reading parquet files into pandas is simple and, again, much faster than via pySpark serialization.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<span class="n">pfile</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">)</span>
+<span class="o">%</span><span class="n">time</span> <span class="n">df2</span> <span class="o">=</span> <span class="n">pfile</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+</pre></div>
+<pre><code>CPU times: user 812 ms, sys: 291 ms, total: 1.1 s
+Wall time: 1.1 s
+</code></pre>
+<p>The parquet format is more compact and faster to load than the ubiquitous CSV format.</p>
+<div class="hll"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;out.csv&#39;</span><span class="p">)</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="err">!</span><span class="n">du</span> <span class="o">-</span><span class="n">sh</span> <span class="n">out</span><span class="o">.</span><span class="n">csv</span> <span class="n">out</span><span class="o">.</span><span class="n">parq</span>
+</pre></div>
+<pre><code>490M    out.csv
+162M    out.parq
+</code></pre>
+<p>In this case, the data is 229MB in memory, and this translates to 162MB on-disc as Parquet or 490MB as CSV. Loading from CSV takes substantially longer than from Parquet.</p>
+<div class="hll"><pre><span></span><span class="o">%</span><span class="n">time</span> <span class="n">df2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;out.csv&#39;</span><span class="p">,</span> <span class="n">parse_dates</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+<pre><code>CPU times: user 9.85 s, sys: 1 s, total: 10.9 s
+Wall time: 10.9 s
+</code></pre>
+<p>The biggest advantage, however, is the ability to pick only some columns of interest. In CSV this still means scanning through the whole file (if not parsing all the values), but the columnar nature of Parquet means only reading the data you need.</p>
+<div class="hll"><pre><span></span><span class="o">%</span><span class="n">time</span> <span class="n">df3</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;out.csv&#39;</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;floats&#39;</span><span class="p">])</span>
+<span class="o">%</span><span class="n">time</span> <span class="n">df3</span> <span class="o">=</span> <span class="n">pfile</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;floats&#39;</span><span class="p">])</span>
+</pre></div>
+<pre><code>CPU times: user 4.04 s, sys: 176 ms, total: 4.22 s
+Wall time: 4.22 s
+CPU times: user 40 ms, sys: 96.9 ms, total: 137 ms
+Wall time: 137 ms
+</code></pre>
+<h2>Example</h2>
+<p>We have taken the <a href="http://stat-computing.org/dataexpo/2009/the-data.html">airlines dataset</a> and converted it into Parquet format using <code>fastparquet</code>. The original data was in CSV format, one file per year 1987-2004. The total data size is 11GB as CSV, uncompressed, which becomes about double that in memory as a pandas DataFrame for typical dtypes. This is approaching, if not Big Data, then Sizable Data, because it cannot fit into my machine's memory.</p>
+<p>The Parquet data is stored as a multi-file dataset. The total size is 2.5GB, with Snappy compression throughout.</p>
+<div class="hll"><pre><span></span><span class="n">ls</span> <span class="n">airlines</span><span class="o">-</span><span class="n">parq</span><span class="o">/</span>
+</pre></div>
+<pre><code>_common_metadata  part.12.parquet   part.18.parquet   part.4.parquet
+_metadata         part.13.parquet   part.19.parquet   part.5.parquet
+part.0.parquet    part.14.parquet   part.2.parquet    part.6.parquet
+part.1.parquet    part.15.parquet   part.20.parquet   part.7.parquet
+part.10.parquet   part.16.parquet   part.21.parquet   part.8.parquet
+part.11.parquet   part.17.parquet   part.3.parquet    part.9.parquet
+</code></pre>
+<p>To load the metadata:</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<span class="n">pf</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;airlines-parq&#39;</span><span class="p">)</span>
+</pre></div>
+<p>The ParquetFile instance provides various information about the data-set in attributes:</p>
+<pre><code>pf.info
+pf.schema
+pf.dtypes
+pf.count
+</code></pre>
+<p>Furthermore, we have information available about the "row-groups" (logical chunks) and the 29 column fragments contained within each. In this case, we have one row-group for each of the original CSV files, that is, one per year.</p>
+<p><code>fastparquet</code> will not generally be as fast as a direct memory-dump such as <code>numpy.save</code> or <code>Feather</code>, nor will it be as fast or compact as custom tuned formats like <a href="https://github.com/Blosc/bcolz"><code>bcolz</code></a>. However, it provides good trade-offs and options which can be tuned to the nature of the data. For example, the column/row-group chunking of the data allow pre-selection of only some portions of the total, which enables not having to scan through the other parts of the disc at all. The load speed will depend on the data-type of the column, the efficiency of compression, and whether there are any NULLs.</p>
+<p>There is, in general, a trad-eoff between compression and processing speed: uncompressed will tend to be faster but larger on disc, and <code>gzip</code> compression will be the most compact and slowest. <code>Snappy</code> compression, in this example, provides moderate space efficiency without too much processing cost.</p>
+<p>fastparquet has no problem loading a very large number of rows or columns (memory allowing).</p>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># 124M bool values</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Cancelled&#39;</span><span class="p">])</span>
+</pre></div>
+<pre><code>CPU times: user 436 ms, sys: 167 ms, total: 603 ms
+Wall time: 620 ms
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Distance&#39;</span><span class="p">])</span>
+</pre></div>
+<pre><code>CPU times: user 964 ms, sys: 466 ms, total: 1.43 s
+Wall time: 1.47 s
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># just the first portion of the data, 1.3M rows, 29 columns.</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">filters</span><span class="o">=</span><span class="p">((</span><span class="s1">&#39;Year&#39;</span><span class="p">,</span> <span class="s1">&#39;==&#39;</span><span class="p">,</span> <span class="mi">1987</span><span class="p">),</span> <span class="p">))</span>
+</pre></div>
+<pre><code>CPU times: user 1.37 s, sys: 212 ms, total: 1.58 s
+Wall time: 1.59 s
+</code></pre>
+<p>The following factors are known to reduce performance:</p>
+<ul>
+<li>The existence of NULLs in the data. It is faster to use special values such as <code>NaN</code> for data-types that allow it, or other known sentinel values such as an empty byte-string.</li>
+<li>Variable-length string encoding is slow on both write and read, and fixed-length will be faster, although this is not compatible with all Parquet frameworks (particularly Spark). Converting to categories will be a good option if the cardinality is low.</li>
+<li>Some data-types require conversion in order to be stored in Parquet's few primitive types. Conversion may take some time.</li>
+</ul>
+<h1>The Python big-data ecosystem</h1>
+<p>fastparquet provides one of the necessary links for Python to be a first-class citizen within Big Data processing. Although useful alone, it is intended to work seamlessly with the following libraries:</p>
+<ul>
+<li><a href="https://github.com/dask/dask/">Dask</a>, a pure-Python, flexible parallel execution engine, and its <a href="https://github.com/dask/distributed/">distributed</a> scheduler. Each row group is independent of the others, and Dask can take advantage of this to process parts of a Parquet data-set in parallel. The Dask DataFrame closely mirrors pandas, and methods on it (a subset of all those in pandas) actually call pandas methods on the underlying shards of the logical DataFrame. The Dask Parquet interface is experimental, as it lags slightly behind development in fastparquet.</li>
+<li><a href="http://hdfs3.readthedocs.io">hdfs3</a> , <a href="http://s3fs.readthedocs.io">s3fs</a> and <a href="https://github.com/Azure/azure-data-lake-store-python">adlfs</a> provide native Pythonic interfaces to massive file systems. If the whole purpose of Parquet is to store Big Data, we need somewhere to keep it. fastparquet accepts a function to open a file-like object, given a path, and so can use any of these back-ends for reading and writing, and makes it easy to use any new file-system back-end in the future. Choosing the back-end is automatic when using Dask and a URL like <code>s3://mybucket/mydata.parq</code>.</li>
+</ul>
+<p>With the blossoming of interactive visualization technologies for Python, the prospect of end-to-end big data processing projects is now fully realizable.</p>
+<h1>Status and plans</h1>
+<p>As of the publication of this article, the library can be considered beta, useful to the general public and able to cope with many situations, but with some caveats (see below). Please try for your own use case and report issues and comments on the <a href="https://github.com/dask/fastparquet/issues/">GitHub tracker</a>. The code will continue to develop (contributions welcome), and we will endeavour to keep the documentation in sync and provide regular updates.</p>
+<p>A number of nice-to-haves are planned, and work to improve the performance should be completed by about new-year, 2017.</p>
+<h2>Further information</h2>
+<p>We don't have the space to talk about it here, but documentation at <a href="http://fastparquet.readthedocs.io">RTD</a> gives further details on</p>
+<ul>
+<li>How to iterate through Parquet-stored data, rather than load the whole data-set into memory at once</li>
+<li>Using Parquet with Dask-DataFrames for parallelism and on a distributed cluster</li>
+<li>Getting the most out of performance</li>
+<li>Reading and writing partitioned data, and</li>
+<li>Data-types understood by Parquet and fastparquet.</li>
+</ul>
+<h1>Caveats</h1>
+<p>Aside from the performance pointers, above, some specific things do not work in fastparquet, and for some of these, fixes are not planned - unless there is substantial community interest.</p>
+<ul>
+<li>Some encodings are not supported, such as delta encoding, since we have no test data to develop against.</li>
+<li>Nested schemas are not supported at all, and are not currently planned, since they don't fit in well with pandas' tabular layout. If a column contains Python objects, they can be JSON-encoded and written to Parquet as strings.</li>
+<li>Some output Parquet files will not be compatible with some other Parquet frameworks. For instance, Spark cannot read fixed-length byte arrays.</li>
+</ul>
+<p>This work is fully open source (Apache-2.0), and contributions are welcome.</p>
+<p>Development of the library has been supported by <a href="https://www.continuum.io/">Continuum Analytics</a>.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

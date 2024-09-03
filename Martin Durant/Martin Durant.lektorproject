@@ -1,8 +1,0 @@
-[project]
-name = Martin Durant
-
-[servers.ghpages]
-target = ghpages+https://martindurant/martindurant.github.io
-
-[packages]
-lektor-markdown-highlighter = 0.3.1

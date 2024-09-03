@@ -1,0 +1,128 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Anaconda hack: pandas decimal type! — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Anaconda hack: pandas decimal type!</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2022-11-14
+  </p>
+  <p>It is little known outside of Anaconda, but we arrange quarterly
+hack days, in which we can do work unrelated to out day-to-day
+activities, together with colleagues from any team.</p>
+<p>So, we did this last week, and I decided to lead a small project
+to fix what seems to mie a critical missing feature in pandas: a fixed
+precision decimal type. Thanks to Ryan Keith for helping out.</p>
+<h3>What is a decimal type</h3>
+<p>In python, and most computer languages, non-integer numbers are usually
+stored internally as floating point. This leads to plenty of quirks and
+unexpected errors</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="mf">0.1</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">==</span> <span class="mf">0.3</span>
+<span class="kc">False</span>
+</pre></div>
+<p>This is also true in Pandas</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mf">0.3</span>
+<span class="kc">False</span>
+</pre></div>
+<p>But we can get exact and expected outcomes by using a decimal type:
+integers with an integer power-of-ten multiplier, so that "0.1"
+is represented as the integer 1, and factor of 10**-1.</p>
+<p>Although python already has <code>decimal.Decimal</code>, we don't want python
+instances stored in pandas, because that is far too slow - we want
+something that vectorises.</p>
+<p>I should say, it was surprising to find there was no existing
+decimal type for pandas, given pandas' origins in finance. Scientists usually are
+ok with uncertainty, since computer calculations are probably much
+more precise than any measurement, but finance values are exact.</p>
+<h3>Implementation</h3>
+<p>We made a "decimal" extension type for pandas.</p>
+<p>For now, see <a href="https://github.com/martindurant/pandas-decimal">this repo</a> in
+my personal github. We followed the template established by Doug Davis and
+myself in <a href="https://github.com/intake/awkward-pandas"><code>awkward-pandas</code></a>;
+having this start was crucial to getting anything done in two days.</p>
+<p>The hardest part was filling out the comparison and arithmetic <code>binop</code>s,
+in which we need to take account of the type of the "other":</p>
+<ul>
+<li>int or float scalar</li>
+<li>numpy-like array</li>
+<li>another Decimal series, with some other scale factor</li>
+</ul>
+<h3>Outcome</h3>
+<p>See the <a href="https://nbviewer.org/github/martindurant/pandas-decimal/blob/main/notebooks/demo.ipynb">demo notebook</a>!
+We have successful workflows, we are correct, and hundreds of times faster than putting
+<code>decimal.Decimal</code> instances into a pandas object series. We even have a handful of
+passing tests.</p>
+<p>Proof of correctness:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">pandas_decimal</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="s2">&quot;decimal[2]&quot;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span>
+<span class="mi">0</span>   <span class="mf">0.10</span>
+<span class="mi">1</span>   <span class="mf">0.10</span>
+<span class="mi">2</span>   <span class="mf">0.10</span>
+<span class="n">dtype</span><span class="p">:</span> <span class="n">decimal</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mf">0.3</span>
+<span class="kc">True</span>
+</pre></div>
+<p>That's it!</p>
+<h3>Next</h3>
+<p>I'm not sure how to release this or whether anyone is interested. We shall find out,
+please comment on the repo.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

@@ -1,0 +1,160 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>The simplest new streamz plugin — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>The simplest new streamz plugin</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2021-03-08
+  </p>
+  <p><strong>TL;DR</strong>: <a href="https://github.com/martindurant/streamz-q">streamz-q</a>
+demonstrates a very simple streamz source plugin, and shows how the user
+can now be a source of events for real-time processing and machine learning.</p>
+<p><img src="https://streamz.readthedocs.io/en/latest/_images/complex.svg" alt="graph" width="600"/></p>
+<h2>Streamz is...</h2>
+<p><a href="https://streamz.readthedocs.io/en/latest/">Streamz</a> is a real-time event processing framework for python.
+It enables complex graph logic, and can accumulate events data into dataframes and for hand-off to
+Dask. By using async concurrency, streamz handles backpressure and timing operations with very
+little overhead or latency.</p>
+<p>So far, sources of events for streamz have come from</p>
+<ul>
+<li>disk state, such as streaming from a single text file, watching for new files in a directory or from a pipe to
+a process</li>
+<li>acting as a server, responding to HTTP or TCP traffic</li>
+<li>an events framework such as kafka or redis-streams</li>
+<li>arbitrary periodic functions, usually polling some resource such as a server or capture device.</li>
+</ul>
+<p>One obvious source of events which has so far been overlooked is the user interface, such as mouse
+movements. Here I demonstrate
+a very simple streamz source, with examples of how I can feed it from a <code>holoviews</code> plot (i.e., browser events)
+or a <code>Qt</code> widget (i.e., desktop events.). Since user-facing interfaces already have internal event loops,
+I just need a way to pass events between the UI thread, and the streamz thread.</p>
+<h2>Plugin</h2>
+<p>The <a href="https://github.com/martindurant/streamz-q/blob/main/streamz_q/plugin.py">plugin code</a>, 
+simplified, looks this.</p>
+<div class="hll"><pre><span></span><span class="k">class</span> <span class="nc">from_q</span><span class="p">(</span><span class="n">streamz</span><span class="o">.</span><span class="n">Source</span><span class="p">):</span>
+
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">sleep_time</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            :param q: threading.Queue</span>
+<span class="sd">                Any items pushed into here will become streamz events</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="o">...</span>
+
+         <span class="k">async</span> <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+             <span class="k">try</span><span class="p">:</span>
+                 <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">asynchronous</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+             <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                 <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sleep</span><span class="p">)</span>
+</pre></div>
+<p>As events appear in the given Queue, <code>q</code>, they will be emitted into the pipeline. If there are no
+events, I wait a little bit. Unfortunately, there appears to be no simple way to <code>await</code> the state of <code>q</code> -
+using <code>q.get()</code> would block the thread and event loop (and any other streamz tasks concurrently running). Note
+that I <code>await</code> the call to <code>emit</code>, to respect any backpressure from downstream.</p>
+<p>Note that, due to the "entrypoints" specification in the <code>setup.py</code>, installing the package makes 
+<code>streamz.Stream.from_q</code> available without having to explicitly import it.</p>
+<h2>Holoviews</h2>
+<p><a href="https://holoviews.org/">Holoviews</a> is an interactive plotting library for the browser, built on <code>Bokeh</code>,
+and allowing dynamic updating of plot data. <a href="https://panel.holoviz.org/">Panel</a> is the UI component with
+widgets, layouts and callbacks.</p>
+<p>Although the bokeh/holoviews server runs on Tornado, callbacks are blocking (not async), so if you want
+to also run concurrent processing, you need two threads. The 
+<a href="https://github.com/martindurant/streamz-q/blob/main/example/hv.py">example</a> shows this in action: holoviews
+creates and display the plot in the browser, and passes mouse movements to streamz. In this particular case,
+I choose to make streamz update the plot to show where the movement events ocurred.</p>
+<p><img src="../../img/events.gif" alt="Events" width="500"/></p>
+<p>There were a few subtleties to make this work</p>
+<ul>
+<li>I start the server and its event loop manually, so I can store the objects and later shut them down</li>
+<li>I update an attribute <code>counter</code> purely so I can trigger evens that will always have a new data value</li>
+<li>I recreate the image each time; I could have updated a curve's data in-place, which involves less communication; so
+I choose to update only once per second</li>
+</ul>
+<p>Holoview <em>could</em> have done this without streamz, probably. However, I also show a printout of streamz's processing
+rate, events/s. The bottleneck, here, is the events being generated by the browser not in streamz (as can be seen in the
+next section). The streamz pipeline to get the event rate is <code>from_q(q).timed_window(1).map(len).sink(print)</code>;
+this contains no interesting branching logic.</p>
+<h2>Qt</h2>
+<p>I <a href="https://github.com/martindurant/streamz-q/blob/main/example/qt.py">repeated the exercise</a> 
+for PyQt, as a desktop application. Qt has its own event loop, implemented in C++, which must run on the
+main thread.</p>
+<p>I didn't bother with graphical output this time, only
+the event rate. For Qt, you can easily reach &gt;130events/s, possibly because of finer-grained sensitivity to
+mouse movements at the screen's native resolution. The only real code in this version is to capture
+the <code>mouseMoveEvent</code> of a QWidget (note that this actually responds to <em>dragging</em>, with the mouse pressed).</p>
+<h2>Summary</h2>
+<p>The new source plugin trivially passes events to streamz from other threads. This enables hooking into
+other eventing systems with their own event loops. The trivial examples for the browser and GUI application
+may spur others to make more interesting applications. For example, it would be natural to feed filtered
+events to <a href="https://github.com/online-ml/river/">River</a> for on-line real-time machine learning of users'
+behaviour. Imagine streamz feeding River!</p>
+<p><em>EDIT</em></p>
+<p>With the new <code>ReactiveHTML</code> component in Panel, it will be possible to respond to arbitrary DOM events
+(thanks for the example, <a href="https://github.com/philippjfr">@philippjfr</a> )</p>
+<div class="hll"><pre><span></span><span class="k">class</span> <span class="nc">Image</span><span class="p">(</span><span class="n">ReactiveHTML</span><span class="p">):</span>
+    <span class="n">src</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">String</span><span class="p">()</span>
+    <span class="n">_html</span> <span class="o">=</span> <span class="s1">&#39;&lt;img id=&quot;img&quot; src=&quot;$</span><span class="si">{src}</span><span class="s1">&quot;&gt;&lt;/img&gt;&#39;</span>
+
+<span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">src</span><span class="o">=</span><span class="s1">&#39;dice.png&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+<span class="n">img</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s1">&#39;img&#39;</span><span class="p">,</span> <span class="s1">&#39;mousemove&#39;</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">)</span>
+</pre></div>
+<p><em>EDIT</em></p>
+<p><code>ipywidgets</code> should be trivial to support with the same mechanism.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

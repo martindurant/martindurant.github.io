@@ -1,0 +1,298 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Local Exceptions — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Local Exceptions</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2017-03-06
+  </p>
+  <h1>Replaying exceptions from a remote worker</h1>
+<p>If you are a spark user, or other programmer of distributed software, you will certainly have been in this situation. You have executed a computation across a cluster (or perhaps just in some processes on one machine), and <em>something</em> has gone awry. The screen shows a traceback, and probably you can find which line in which function failed, but you still don't know why it failed.</p>
+<p>If this were not a distributed problem, you would turn to your favourite debugger, like <code>pdb</code> for python, and inspect the state of the system when the exception occurred. You can't do that here.</p>
+<p><a href="http://dask.pydata.org">Dask</a>'s <a href="http://distributed.readthedocs.io/en/latest/setup.html">distributed</a> scheduler is easy to hack for a distributed computation engine, and here I'll demonstrate a new feature which allows you to pull just the part of a failed computation responsible for an exception into the local thread, so that you can do real debugging.</p>
+<h2>Let's make an error</h2>
+<p>Here is a typical workflow: we may wrap functions in <code>dask.delayed</code> to define a computation for parallel execution. The output variable <code>out</code> (which hasn't been executed yet) carries the definition of all the tasks that are to be carried out.</p>
+<div class="hll"><pre><span></span><span class="kn">from</span> <span class="nn">dask</span> <span class="kn">import</span> <span class="n">delayed</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># default cluster, some local processes</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="k">def</span> <span class="nf">dec</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">1</span>
+
+<span class="k">def</span> <span class="nf">recip</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">x</span>
+
+<span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">76</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+
+<span class="n">ddec</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span>
+<span class="n">drecip</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="n">recip</span><span class="p">)</span>
+<span class="n">dsum</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">dsum</span><span class="p">([</span><span class="n">drecip</span><span class="p">(</span><span class="n">ddec</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">])</span>
+<span class="nb">dict</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">dask</span><span class="p">)</span>
+</pre></div>
+<pre><code>{'dec-2320282a-2fe3-4c08-8d05-ec7bcfa3c9a0': (&lt;function __main__.dec&gt;, 9),
+ 'dec-2c3e77ed-4d41-4d24-a77e-65ca2931d90b': (&lt;function __main__.dec&gt;, 2),
+ 'dec-73e20b21-c38c-4e2f-96e5-ce0b337e1a17': (&lt;function __main__.dec&gt;, 2),
+ 'dec-9574e24f-3df4-4b11-acf9-b31f0d831eda': (&lt;function __main__.dec&gt;, 5),
+ 'dec-bcf44c7d-5eee-4c69-befb-4bb673007a12': (&lt;function __main__.dec&gt;, 1),
+ 'dec-e0272ce2-ab4f-48b5-9c3a-3534d3d9d288': (&lt;function __main__.dec&gt;, 4),
+ 'dec-e9439552-450e-427f-a85d-ad1c2159c859': (&lt;function __main__.dec&gt;, 76),
+ 'recip-29bcb4aa-197d-4c61-bf22-001914b2fceb': (&lt;function __main__.recip&gt;,
+  'dec-2320282a-2fe3-4c08-8d05-ec7bcfa3c9a0'),
+ 'recip-7497b4b9-43b7-49af-9b7d-aa3f91b5a78f': (&lt;function __main__.recip&gt;,
+  'dec-e0272ce2-ab4f-48b5-9c3a-3534d3d9d288'),
+ 'recip-8cbece21-25cc-4a63-9585-905e99ef54ea': (&lt;function __main__.recip&gt;,
+  'dec-bcf44c7d-5eee-4c69-befb-4bb673007a12'),
+ 'recip-9911ba10-cee0-40f1-a3b1-9df451d4724e': (&lt;function __main__.recip&gt;,
+  'dec-e9439552-450e-427f-a85d-ad1c2159c859'),
+ 'recip-a329bb60-948d-4bc1-9024-8b8169e7a141': (&lt;function __main__.recip&gt;,
+  'dec-9574e24f-3df4-4b11-acf9-b31f0d831eda'),
+ 'recip-cafbb029-33f9-40db-95e8-fc5d9dc80cb2': (&lt;function __main__.recip&gt;,
+  'dec-73e20b21-c38c-4e2f-96e5-ce0b337e1a17'),
+ 'recip-d4c3b499-2106-47a7-ad5a-f512f1c62492': (&lt;function __main__.recip&gt;,
+  'dec-2c3e77ed-4d41-4d24-a77e-65ca2931d90b'),
+ 'sum-ab3de01e-565f-407a-8563-e363f3e17138': (&lt;function sum&gt;,
+  ['recip-29bcb4aa-197d-4c61-bf22-001914b2fceb',
+   'recip-7497b4b9-43b7-49af-9b7d-aa3f91b5a78f',
+   'recip-cafbb029-33f9-40db-95e8-fc5d9dc80cb2',
+   'recip-9911ba10-cee0-40f1-a3b1-9df451d4724e',
+   'recip-d4c3b499-2106-47a7-ad5a-f512f1c62492',
+   'recip-8cbece21-25cc-4a63-9585-905e99ef54ea',
+   'recip-a329bb60-948d-4bc1-9024-8b8169e7a141'])}
+</code></pre>
+<p>When we compute, we get an exception. Since this is a contrived case, the name and location of the exception are enough to have a good idea of what happened, but let's suppose we don't know.</p>
+<div class="hll"><pre><span></span><span class="n">out</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip()
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<h2>Debugging?</h2>
+<p>Actually, that's the stack-trace from the worker process, but we can't run <code>debug</code> now, the exception didn't hapen in our main process/thread. Until now, the recommended course of action would have been to execute the whole computation graph in the local thread as follows:</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
+<span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">dask</span><span class="o">.</span><span class="k">async</span><span class="o">.</span><span class="n">get_sync</span><span class="p">):</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip(x)
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<p>Which does work, and allows us to debug</p>
+<div class="hll"><pre><span></span><span class="n">debug</span>
+</pre></div>
+<pre><code>&gt; &lt;ipython-input-2-990705f387fe&gt;(5)recip()
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+ipdb&gt; p x
+0
+ipdb&gt; q
+</code></pre>
+<p>...but the whole point of running a process through Dask is usually because we can't fit all the data in this one machine's memory, so pulling everything into one thread may well not be possible.</p>
+<p>Another alternative: rewrite everything using the distributed client's map/submit model. Now when we have the error, we have kept pointers to all the intermediate tasks, so we can go back and find out which first failed and infer when that input to it must have been. We'd rather not have to go through this process.</p>
+<div class="hll"><pre><span></span><span class="n">futs1</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dec</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>
+<span class="n">futs2</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">recip</span><span class="p">,</span> <span class="n">futs1</span><span class="p">)</span>
+<span class="n">fut3</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="nb">sum</span><span class="p">,</span> <span class="n">futs2</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">fut3</span><span class="p">)</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip()
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<div class="hll"><pre><span></span><span class="c1"># all the futures; note that all intermediates are kept in memory</span>
+<span class="c1"># by the cluster.</span>
+<span class="n">futs1</span><span class="p">,</span> <span class="n">futs2</span><span class="p">,</span> <span class="n">fut3</span>
+<span class="c1"># we can infer that recip-d6051c1952b3e227443c7bca1924d10b caused the problem,</span>
+<span class="c1"># and that dec-610d6bc3a7402e586ae307a8a5da6cda was its input - which value</span>
+<span class="c1"># was that?</span>
+</pre></div>
+<pre><code>([&lt;Future: status: finished, type: int, key: dec-3867c905cd3db6d8a90a8bc3895adf16&gt;,
+  &lt;Future: status: finished, type: int, key: dec-c0050b7dad0484be378457b1f04cd6d2&gt;,
+  &lt;Future: status: finished, type: int, key: dec-2b0735c32fef85ee7864e4906c404348&gt;,
+  &lt;Future: status: finished, type: int, key: dec-30f697d4b15a3fb82e63663f90e79028&gt;,
+  &lt;Future: status: finished, type: int, key: dec-2b0735c32fef85ee7864e4906c404348&gt;,
+  &lt;Future: status: finished, type: int, key: dec-610d6bc3a7402e586ae307a8a5da6cda&gt;,
+  &lt;Future: status: finished, type: int, key: dec-2ca0787ac027e76e69ef4a72f73b099f&gt;],
+ [&lt;Future: status: finished, type: float, key: recip-5f366fbd566b4b1753f34ced032e75cf&gt;,
+  &lt;Future: status: finished, type: float, key: recip-b3c91f2dea621849c636422c889374ab&gt;,
+  &lt;Future: status: finished, type: float, key: recip-0623a01548741b79eac6cb0d27d03207&gt;,
+  &lt;Future: status: finished, type: float, key: recip-6f2f6a852a7fddca81d7aebfb47a80b5&gt;,
+  &lt;Future: status: finished, type: float, key: recip-0623a01548741b79eac6cb0d27d03207&gt;,
+  &lt;Future: status: error, key: recip-d6051c1952b3e227443c7bca1924d10b&gt;,
+  &lt;Future: status: finished, type: float, key: recip-e1bae5f1997f1ba6e7f074315b4fbce0&gt;],
+ &lt;Future: status: error, key: sum-0029496e8d105b2ccc25156278d931f4&gt;)
+</code></pre>
+<p>This method doesn't play well with collections, though, where you don't have easy access to the intermediates. Below is the same calculation: <code>bag2</code> points a future, each of which is the result of more than one task, things are not simple</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask.bag</span> <span class="k">as</span> <span class="nn">db</span>
+<span class="n">bag</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">from_sequence</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">bag2</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">bag</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">recip</span><span class="p">))</span>
+<span class="n">bag2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip()
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<p>and our previous best method also fails, because <code>bag2</code> depends on data held on the cluster, not locally.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
+<span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">dask</span><span class="o">.</span><span class="k">async</span><span class="o">.</span><span class="n">get_sync</span><span class="p">):</span>
+    <span class="n">bag2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>TypeError: object of type 'Future' has no len()
+</code></pre>
+<h2>Recreate error locally</h2>
+<p>With new functionality, whenever we have a future that comes back from the scheduler as an "error" (see below), we can call the method <code>recreate_error_locally</code>. This analyses the graph for that future, finds the task responsible for the exception, and pulls only it, and its input values, from the cluster for local execution.</p>
+<div class="hll"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">bag2</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="n">f</span>
+</pre></div>
+<pre><code>&lt;Future: status: error, key: finalize-999fffbd587f6214fc6327ae914debe1&gt;
+</code></pre>
+<div class="hll"><pre><span></span><span class="n">c</span><span class="o">.</span><span class="n">recreate_error_locally</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip(x)
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<p>Now we can debug again:</p>
+<div class="hll"><pre><span></span><span class="n">debug</span>
+</pre></div>
+<pre><code>&gt; &lt;ipython-input-2-990705f387fe&gt;(5)recip()
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+ipdb&gt; p x
+0
+ipdb&gt; q
+</code></pre>
+<p>This also works for output created using only <code>dask.delayed</code>:</p>
+<div class="hll"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">recreate_error_locally</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip(x)
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<p>and output created using map/submit</p>
+<div class="hll"><pre><span></span><span class="n">c</span><span class="o">.</span><span class="n">recreate_error_locally</span><span class="p">(</span><span class="n">fut3</span><span class="p">)</span>
+</pre></div>
+<pre><code>...
+&lt;ipython-input-2-990705f387fe&gt; in recip(x)
+      3 
+      4 def recip(x):
+----&gt; 5     return 1 / x
+      6 
+      7 inputs = [9, 4, 2, 76, 2, 1, 5]
+
+
+ZeroDivisionError: division by zero
+</code></pre>
+<h2>Conclusion</h2>
+<p>I am not aware of any other distributed execution engine with comparable functionality.</p>
+<p>The real lesson, though, is that it took relatively little effort and <a href="https://github.com/dask/distributed/blob/master/distributed/recreate_exceptions.py">few lines of code</a> to get this working, because the distributed scheduler is pure-python, and very approachable.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

@@ -1,0 +1,587 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Moving to Google Compute and Storage — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Moving to Google Compute and Storage</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2017-03-23
+  </p>
+  <p>Much of our cloud-based dask-distributed examples have taken place on Amazon EC2, with longer-term storage in S3. We have built out tools such as <a href="https://github.com/dask/dask-ec2">dask-ec2</a> to quickly get up and running.</p>
+<p>With increased interest at Continuum for a Google-based solution, and, particularly, Kubernetes container workflows for Anaconda Enterprise 5, this is a very short experiment to see whether we can get a working environment up and running just as easily as we could within EC2.</p>
+<p>This blog demonstrates the use with dask-distributed of:</p>
+<ul>
+<li><a href="https://github.com/martindurant/dask-kubernetes">dask-kubernetes</a>, which creates ten containers with two cores and 6GB each. Note that the readme does not yet reflect the latest usage.</li>
+<li><a href="http://gcsfs.readthedocs.io/en/latest/">gcsfs</a>, a brand new pythonic file-system interface to Google Cloud Storage, similar to s3fs, hdfs3, adlfs (see an <a href="http://martindurant.github.io/blog/python-and-big-data-storage/">earlier post</a>).</li>
+<li><a href="http://fastparquet.readthedocs.io/en/latest/">fastparquet</a> as the storage format of choice for tabular data.</li>
+</ul>
+<h2>Launching the cluster</h2>
+<p>From the local CLI, this was as simple as</p>
+<div class="hll"><pre><span></span>&gt; <span class="nb">source</span> scripts/make_cluster.sh
+&gt; kubectl get pods       <span class="c1">#  wait until pods are alive</span>
+&gt; kubectl get services   <span class="c1">#  list assigned IPs</span>
+</pre></div>
+<p>... and in the browser go to the external IP of the jupyter-notebook service, port 8888. Note that the password was baked into the supplied config/jupyter_notebook_config.py in the docker image.</p>
+<h2>Transferring data</h2>
+<p>Let's take one of the typical datasets often referenced in dataframe examples: NYC taxi data. In this case we pick just 2014 "green" data, stored in S3 as CSVs. This should seem familiar to anyone who has come across dask-dataframe workflows before. We use <a href="http://s3fs.readthedocs.io/en/latest/">s3fs</a> for access.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">s3fs</span>
+<span class="n">s3</span> <span class="o">=</span> <span class="n">s3fs</span><span class="o">.</span><span class="n">S3FileSystem</span><span class="p">(</span><span class="n">anon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">size</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">s3</span><span class="o">.</span><span class="n">du</span><span class="p">(</span><span class="s1">&#39;blaze-data/nyc-taxi/csv/&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="s1">&#39;green_&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">s3</span><span class="o">.</span><span class="n">du</span><span class="p">(</span><span class="s1">&#39;blaze-data/nyc-taxi/csv&#39;</span><span class="p">)</span>
+<span class="c1"># total size of only the greens: ~4GB</span>
+</pre></div>
+<pre><code>3.9011352648958564
+
+{'blaze-data/nyc-taxi/csv/green_tripdata_2014-01.csv': 129441669,
+ 'blaze-data/nyc-taxi/csv/green_tripdata_2014-02.csv': 162233821,
+ 'blaze-data/nyc-taxi/csv/green_tripdata_2014-03.csv': 209397471,
+...
+</code></pre>
+<div class="hll"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">s3</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="s1">&#39;blaze-data/nyc-taxi/csv/green_tripdata_2014-01.csv&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+<span class="c1"># Structure of the data</span>
+</pre></div>
+<pre><code>lpep_pickup_datetime,Lpep_dropoff_datetime,Store_and_fwd_flag,RateCodeID,Pickup_longitude,Pickup_latitude,Dropoff_longitude,Dropoff_latitude,Passenger_count,Trip_distance,Fare_amount,Extra,MTA_tax,Tip_amount,Tolls_amount,Ehail_fee,Total_amount,Payment_type,Distance_between_service,Time_between_service,Trip_type
+2014-01-01 00:00:00,2014-01-01 01:08:06,N,1,0,0,-73.865043640136719,40.872306823730469,1,6.47,20,0.5,0.5,0,0,,21,1,1.00,0,
+2014-01-01 00:00:00,2014-01-01 06:03:57,N,2,0,0,-73.7763671875,40.645488739013672,1,20.12,52,0,0.5,0,5.33,,57.83,1,.00,0,
+2014-01-01 00:00:00,2014-01-01 18:22:44,N,1,0,0,-73.932647705078125,40.852573394775391,2,.81,5,0.5,0.5,0,0,,6,1,21.00,0,
+2014-01-01 00:00:00,2014-01-01 00:52:03,N,1,0,0,-73.99407958984375,40.749092102050781,1,9.55,33.5,0.5,0.5,2.17,5.33,,42,1,.00,0,
+2014-01-01 00:00:00,2014-01-01 00:49:25,N,1,0,0,-73.936065673828125,40.734725952148437,1,1.22,7,0.5,0.5,2,0,,10,1,.00,0,
+2014-01-01 00:00:00,2014-01-01 00:01:15,N,1,0,0,-73.912155151367188,40.684059143066406,2,
+</code></pre>
+<div class="hll"><pre><span></span><span class="c1"># prescribe the dataframe with some typical CSV ingest options</span>
+<span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+<span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Store_and_fwd_flag&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">,</span> <span class="s1">&#39;Passenger_count&#39;</span><span class="p">:</span> <span class="s1">&#39;uint8&#39;</span><span class="p">,</span> <span class="s1">&#39;Payment_type&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">,</span> <span class="s1">&#39;Trip_type&#39;</span><span class="p">:</span> <span class="s1">&#39;float32&#39;</span><span class="p">,</span> <span class="s1">&#39;RateCodeID&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">}</span>
+<span class="n">dtype</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">f</span><span class="p">:</span> <span class="s1">&#39;float32&#39;</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;Fare_aamount&#39;</span><span class="p">,</span> <span class="s1">&#39;Extra&#39;</span><span class="p">,</span> <span class="s1">&#39;MTA_tax&#39;</span><span class="p">,</span> <span class="s1">&#39;Tip_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Tolls_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Ehail_fee&#39;</span><span class="p">,</span> <span class="s1">&#39;Total_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Trip_distance&#39;</span><span class="p">,</span> <span class="s1">&#39;Distance_between_service&#39;</span><span class="p">]})</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">dd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;s3://blaze-data/nyc-taxi/csv/green*csv&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                 <span class="n">parse_dates</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;lpep_pickup_datetime&#39;</span><span class="p">,</span> <span class="s1">&#39;Lpep_dropoff_datetime&#39;</span><span class="p">],</span>
+                 <span class="n">storage_options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;anon&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="n">blocksize</span><span class="o">=</span><span class="mi">1000000000</span><span class="p">)</span>
+<span class="c1"># blocksize to control number of rows per partition</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">dtypes</span>
+</pre></div>
+<pre><code>(lpep_pickup_datetime        datetime64[ns]
+ Lpep_dropoff_datetime       datetime64[ns]
+ Store_and_fwd_flag                category
+ RateCodeID                        category
+ Pickup_longitude                   float64
+ Pickup_latitude                    float64
+ Dropoff_longitude                  float64
+ Dropoff_latitude                   float64
+ Passenger_count                      uint8
+ Trip_distance                      float32
+ Fare_amount                        float64
+ Extra                              float32
+ MTA_tax                            float32
+ Tip_amount                         float32
+ Tolls_amount                       float32
+ Ehail_fee                          float32
+ Total_amount                       float32
+ Payment_type                      category
+ Distance_between_service           float32
+ Time_between_service                 int64
+ Trip_type                          float32
+ dtype: object,
+</code></pre>
+<div class="hll"><pre><span></span><span class="c1"># Test token on the local filesystem to log into GCS</span>
+<span class="kn">import</span> <span class="nn">gcsfs</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="n">token</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;application_default_credentials.json&#39;</span><span class="p">))</span>
+<span class="n">gcs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="s1">&#39;continuum=compute&#39;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">)</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="c1"># Perform operations on the whole cluster</span>
+<span class="c1"># &#39;dask-scheduler&#39; is a known IP within a container</span>
+<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">progress</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="s1">&#39;dask-scheduler:8786&#39;</span><span class="p">)</span>
+<span class="n">c</span>
+</pre></div>
+<pre><code>&lt;Client: scheduler='tcp://dask-scheduler:8786' processes=10 cores=20&gt;
+</code></pre>
+<p>Finally an all-in-one task to read from S3, parse the data, convert to parquet (with snappy compression) and write to GCS.</p>
+<div class="hll"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s1">&#39;gcs://temporary_output/NYC.parq&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;SNAPPY&#39;</span><span class="p">,</span>
+              <span class="n">storage_options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;project&#39;</span><span class="p">:</span> <span class="s1">&#39;continuum-compute&#39;</span><span class="p">,</span> <span class="s1">&#39;token&#39;</span><span class="p">:</span> <span class="n">token</span><span class="p">})</span>
+</pre></div>
+<div class="hll"><pre><span></span><span class="c1"># and we see files! Total size: ~1GB</span>
+<span class="n">gcs</span><span class="o">.</span><span class="n">du</span><span class="p">(</span><span class="s1">&#39;temporary_output/NYC.parq&#39;</span><span class="p">),</span> <span class="n">gcs</span><span class="o">.</span><span class="n">du</span><span class="p">(</span><span class="s1">&#39;temporary_output/NYC.parq&#39;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span>
+</pre></div>
+<pre><code>({'temporary_output/NYC.parq/_common_metadata': 542,
+  'temporary_output/NYC.parq/_metadata': 38492,
+  'temporary_output/NYC.parq/part.0.parquet': 36174840,
+  ...},
+ 1.0810074405744672)
+</code></pre>
+<h2>Investigate the output</h2>
+<p>We can choose to interrogate a parquet dataset on GCS directly with fastparquet: notice that we know the data-types, total number of rows and any partitioning before loading any of the data.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<span class="n">pf</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;temporary_output/NYC.parq&#39;</span><span class="p">,</span> <span class="n">open_with</span><span class="o">=</span><span class="n">gcs</span><span class="o">.</span><span class="n">open</span><span class="p">)</span>
+<span class="n">pf</span>
+</pre></div>
+<pre><code>&lt;Parquet File: {'name': 'temporary_output/NYC.parq/_metadata', 'columns': ['lpep_pickup_datetime', 'Lpep_dropoff_datetime', 'Store_and_fwd_flag', 'RateCodeID', 'Pickup_longitude', 'Pickup_latitude', 'Dropoff_longitude', 'Dropoff_latitude', 'Passenger_count', 'Trip_distance', 'Fare_amount', 'Extra', 'MTA_tax', 'Tip_amount', 'Tolls_amount', 'Ehail_fee', 'Total_amount', 'Payment_type', 'Distance_between_service', 'Time_between_service', 'Trip_type'], 'categories': [], 'rows': 25732985}&gt;
+</code></pre>
+<div class="hll"><pre><span></span><span class="nb">len</span><span class="p">(</span><span class="n">pf</span><span class="o">.</span><span class="n">row_groups</span><span class="p">),</span> <span class="n">pf</span><span class="o">.</span><span class="n">dtypes</span><span class="p">,</span> <span class="n">pf</span><span class="o">.</span><span class="n">statistics</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">][</span><span class="s1">&#39;Lpep_dropoff_datetime&#39;</span><span class="p">]</span>
+</pre></div>
+<pre><code>(18,
+ {'Distance_between_service': dtype('float32'),
+  'Dropoff_latitude': dtype('float64'),
+  'Dropoff_longitude': dtype('float64'),
+  'Ehail_fee': dtype('float32'),
+  'Extra': dtype('float32'),
+  'Fare_amount': dtype('float64'),
+  'Lpep_dropoff_datetime': dtype('&lt;M8[ns]'),
+  'MTA_tax': dtype('float32'),
+  'Passenger_count': dtype('uint8'),
+  'Payment_type': dtype('O'),
+  'Pickup_latitude': dtype('float64'),
+  'Pickup_longitude': dtype('float64'),
+  'RateCodeID': dtype('O'),
+  'Store_and_fwd_flag': dtype('O'),
+  'Time_between_service': dtype('int64'),
+  'Tip_amount': dtype('float32'),
+  'Tolls_amount': dtype('float32'),
+  'Total_amount': dtype('float32'),
+  'Trip_distance': dtype('float32'),
+  'Trip_type': dtype('float32'),
+  'lpep_pickup_datetime': dtype('&lt;M8[ns]')},
+ [numpy.datetime64('2014-02-01T23:28:00.000000000'),
+  numpy.datetime64('2014-03-01T23:43:57.000000000'),
+  ...])
+</code></pre>
+<p>Or we can prescribe a new dask dataframe for the GCS parquet version, as we did initially for the S3 CSV version. The first few rows look identical, except that 'lpep_pickup_datetime', which happened to be the natural ordering of the data, has been automatically chosen as the index. This could have been avoided, but is probably a fine choice.</p>
+<div class="hll"><pre><span></span><span class="n">df2</span> <span class="o">=</span> <span class="n">dd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s1">&#39;gcs://temporary_output/NYC.parq&#39;</span><span class="p">,</span> <span class="n">categories</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Payment_type&#39;</span><span class="p">],</span>
+                     <span class="n">storage_options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;project&#39;</span><span class="p">:</span> <span class="s1">&#39;continuum_compute&#39;</span><span class="p">})</span>
+<span class="c1"># the &#39;categories&#39; keyword will not be necessary very soon.</span>
+<span class="n">df2</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lpep_dropoff_datetime</th>
+      <th>Store_and_fwd_flag</th>
+      <th>RateCodeID</th>
+      <th>Pickup_longitude</th>
+      <th>Pickup_latitude</th>
+      <th>Dropoff_longitude</th>
+      <th>Dropoff_latitude</th>
+      <th>Passenger_count</th>
+      <th>Trip_distance</th>
+      <th>Fare_amount</th>
+      <th>Extra</th>
+      <th>MTA_tax</th>
+      <th>Tip_amount</th>
+      <th>Tolls_amount</th>
+      <th>Ehail_fee</th>
+      <th>Total_amount</th>
+      <th>Payment_type</th>
+      <th>Distance_between_service</th>
+      <th>Time_between_service</th>
+      <th>Trip_type</th>
+    </tr>
+    <tr>
+      <th>lpep_pickup_datetime</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2014-01-01</th>
+      <td>2014-01-01 01:08:06</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.865044</td>
+      <td>40.872307</td>
+      <td>1</td>
+      <td>6.470000</td>
+      <td>20.0</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>21.000000</td>
+      <td>1</td>
+      <td>1.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2014-01-01</th>
+      <td>2014-01-01 06:03:57</td>
+      <td>N</td>
+      <td>2</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.776367</td>
+      <td>40.645489</td>
+      <td>1</td>
+      <td>20.120001</td>
+      <td>52.0</td>
+      <td>0.0</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>5.33</td>
+      <td>NaN</td>
+      <td>57.830002</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2014-01-01</th>
+      <td>2014-01-01 18:22:44</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.932648</td>
+      <td>40.852573</td>
+      <td>2</td>
+      <td>0.810000</td>
+      <td>5.0</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>6.000000</td>
+      <td>1</td>
+      <td>21.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2014-01-01</th>
+      <td>2014-01-01 00:52:03</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.994080</td>
+      <td>40.749092</td>
+      <td>1</td>
+      <td>9.550000</td>
+      <td>33.5</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>2.17</td>
+      <td>5.33</td>
+      <td>NaN</td>
+      <td>42.000000</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2014-01-01</th>
+      <td>2014-01-01 00:49:25</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.936066</td>
+      <td>40.734726</td>
+      <td>1</td>
+      <td>1.220000</td>
+      <td>7.0</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>2.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>10.000000</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="hll"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>  <span class="c1"># S3 CSV version</span>
+</pre></div>
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>lpep_pickup_datetime</th>
+      <th>Lpep_dropoff_datetime</th>
+      <th>Store_and_fwd_flag</th>
+      <th>RateCodeID</th>
+      <th>Pickup_longitude</th>
+      <th>Pickup_latitude</th>
+      <th>Dropoff_longitude</th>
+      <th>Dropoff_latitude</th>
+      <th>Passenger_count</th>
+      <th>Trip_distance</th>
+      <th>...</th>
+      <th>Extra</th>
+      <th>MTA_tax</th>
+      <th>Tip_amount</th>
+      <th>Tolls_amount</th>
+      <th>Ehail_fee</th>
+      <th>Total_amount</th>
+      <th>Payment_type</th>
+      <th>Distance_between_service</th>
+      <th>Time_between_service</th>
+      <th>Trip_type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2014-01-01</td>
+      <td>2014-01-01 01:08:06</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.865044</td>
+      <td>40.872307</td>
+      <td>1</td>
+      <td>6.470000</td>
+      <td>...</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>21.000000</td>
+      <td>1</td>
+      <td>1.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2014-01-01</td>
+      <td>2014-01-01 06:03:57</td>
+      <td>N</td>
+      <td>2</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.776367</td>
+      <td>40.645489</td>
+      <td>1</td>
+      <td>20.120001</td>
+      <td>...</td>
+      <td>0.0</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>5.33</td>
+      <td>NaN</td>
+      <td>57.830002</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2014-01-01</td>
+      <td>2014-01-01 18:22:44</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.932648</td>
+      <td>40.852573</td>
+      <td>2</td>
+      <td>0.810000</td>
+      <td>...</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>6.000000</td>
+      <td>1</td>
+      <td>21.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2014-01-01</td>
+      <td>2014-01-01 00:52:03</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.994080</td>
+      <td>40.749092</td>
+      <td>1</td>
+      <td>9.550000</td>
+      <td>...</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>2.17</td>
+      <td>5.33</td>
+      <td>NaN</td>
+      <td>42.000000</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2014-01-01</td>
+      <td>2014-01-01 00:49:25</td>
+      <td>N</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>-73.936066</td>
+      <td>40.734726</td>
+      <td>1</td>
+      <td>1.220000</td>
+      <td>...</td>
+      <td>0.5</td>
+      <td>0.5</td>
+      <td>2.00</td>
+      <td>0.00</td>
+      <td>NaN</td>
+      <td>10.000000</td>
+      <td>1</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 21 columns</p>
+</div><h2>Test</h2>
+<p>Let's do some quick timing tests to show that this was generally worthwhile</p>
+<div class="hll"><pre><span></span><span class="o">%</span><span class="n">time</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">Passenger_count</span><span class="p">)</span>  <span class="c1"># data from S3 CSV</span>
+</pre></div>
+<pre><code>Wall time: 20 s
+
+25732985
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%</span><span class="n">time</span> <span class="nb">len</span><span class="p">(</span><span class="n">df2</span><span class="o">.</span><span class="n">Passenger_count</span><span class="p">)</span>  <span class="c1"># data from GCS parquet</span>
+</pre></div>
+<pre><code>Wall time: 2.52 s
+
+25732985
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># data from S3 CSV</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;tip_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">Tip_amount</span> <span class="o">/</span> <span class="n">df</span><span class="o">.</span><span class="n">Total_amount</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">Payment_type</span><span class="p">)</span><span class="o">.</span><span class="n">tip_percent</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>Wall time: 20.1 s
+
+Payment_type
+1    13.963146
+2     0.000032
+3     0.151614
+4     0.022007
+5     0.000000
+Name: tip_percent, dtype: float64
+</code></pre>
+<div class="hll"><pre><span></span><span class="o">%%</span><span class="n">time</span>
+<span class="c1"># data from GCS parquet</span>
+<span class="n">df2</span><span class="p">[</span><span class="s1">&#39;tip_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df2</span><span class="o">.</span><span class="n">Tip_amount</span> <span class="o">/</span> <span class="n">df2</span><span class="o">.</span><span class="n">Total_amount</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="n">df2</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df2</span><span class="o">.</span><span class="n">Payment_type</span><span class="p">)</span><span class="o">.</span><span class="n">tip_percent</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+<pre><code>Wall time: 8.5 s
+
+Payment_type
+1    13.963146
+2     0.000032
+3     0.151614
+4     0.022007
+5     0.000000
+Name: tip_percent, dtype: float64
+</code></pre>
+<p>So we see that we get a speedup of between a factor of 8 and 2.4, depending on how many columns were accessed.</p>
+<h2>Conclusions</h2>
+<p>The purpose of this post is to show that we can get up an running on Google infrastructure just as easily as we could on EC2, and be able to quickly do some real dask data processing. This worked pretty well, both for setting up an environment and for interfacing with GCS as an alternative to S3.</p>
+<p>Further thoughts:</p>
+<ul>
+<li>A data-set of size ~GBs is hardly big data, but this is not a performance test, only a proof of concept.</li>
+<li>the google-compute/kubernetes scripts should be well documented and configurable; in the long run it would be nice to recode as a helm chart and make available as a google container app (initial example <a href="https://github.com/danielfrg/charts/commit/f4030b11a4733c6aaa7b72c77d58db413901fd36">here</a>)</li>
+<li>currently, control of the number of nodes, containers, etc., happens from the laptop CLI. It would be possible to have the scheduler call kubernetes and be able to launch worker containers with various parameters at will, with some management interface on the scheduler</li>
+<li>gcsfs required fetching of data at 5MB boundaries, but was still not particularly fast. There is a significant overhead associated with establishing each connection. Parquet allows reading only small parts (e.g., one column) of larger files, but there may be several parts required; gcsfs allows setting the read-ahead block size, but more intelligent decisions could be made on what to read.</li>
+</ul>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

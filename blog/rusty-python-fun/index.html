@@ -1,0 +1,182 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Rusty Python fun — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Rusty Python fun</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2019-01-05
+  </p>
+  <p><strong>Summary</strong>: Rust can be successfully called from python, but requires a little
+finesse for arrays. Since Rust has UTF8 strings as first-class citizens, and a host of
+methods on them in its standard library, I thought it might be the best way to
+accelerate processing an array/column of strings, a very frequent bottle-neck in python data-science.
+I did not find the acceleration I was expecting, but this is probably down to my 
+inexperience with Rust (help appreciated!).</p>
+<h2>Introduction</h2>
+<p>I spent some months in late 2018 teaching myself Rust, from the 
+<a href="https://doc.rust-lang.org/book/2018-edition/index.html">official tutorial</a> and 
+<a href="https://exercism.io/my/tracks/rust">excercism</a>. For those that don't know, Rust is a relatively new
+language with low-level (C-like) performance, but nice functional and iterator semantics,
+as well as strict rules for memory ownership to prevent those all-too-common segfaults.
+Yes, I know you can do UTF8 processing in C/C++ too...</p>
+<p>This small effort is also influenced
+by the attempt of <a href="https://github.com/xhochy/fletcher">fletcher</a> to do array-string operations
+by compiling with <a href="https://numba.pydata.org">numba</a> - which suffers from having to re-implement
+bytes-wise algorithms to simulate string operations, and has no UTF8 handling at all.</p>
+<p>I started by adapting code from <a href="https://github.com/synapticarbors/rust-cython-test">this earlier example</a>,
+which shows how to call a Rust-compiled function from cython. 
+My version performs the one operation, <code>upper</code>, on a single string or on
+an array of strings.</p>
+<p>Basic instructions for running the example:</p>
+<div class="hll"><pre><span></span><span class="gp">$ </span>./make
+</pre></div>
+<p>and the simplest function (note that inputs and outputs here are unicode - this is running on py3)</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">cytest</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">cytest</span><span class="o">.</span><span class="n">call_rust_upper</span><span class="p">(</span><span class="s1">&#39;hello&#39;</span><span class="p">)</span>
+<span class="s1">&#39;HELLO&#39;</span>
+</pre></div>
+<p>This example is obviously not very useful, as we are creating a python object, and the
+round-trip is about 6x slower than <code>'hello'.upper()</code>, but I wanted to demonstrate the capability.</p>
+<h3>Build details</h3>
+<p>How it was done may be generally useful to others. Feel free to skip this section!</p>
+<p>The Rust part is standard, with the following function (note the C semantics)</p>
+<div class="hll"><pre><span></span><span class="cp">#[no_mangle]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">extern</span><span class="w"> </span><span class="s">&quot;C&quot;</span><span class="w"> </span><span class="k">fn</span> <span class="nf">my_upper</span><span class="p">(</span><span class="n">b</span>: <span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">i8</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">u8</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">unsafe</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">CStr</span>::<span class="n">from_ptr</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">};</span><span class="w"></span>
+<span class="w">    </span><span class="n">s</span><span class="p">.</span><span class="n">to_str</span><span class="p">().</span><span class="n">unwrap</span><span class="p">().</span><span class="n">to_uppercase</span><span class="p">().</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+<p>which takes a pointer, assumes it is a valid UTF8 string, calls upper on it and returns a (C)
+pointer to the result. Note that creating a local variable from a passed pointer is always unsafe,
+but this is the only thing we can do unless we actually allocate and assign strings
+or vectors of strings within Rust.</p>
+<p>The cargo stub is straight-forward:</p>
+<div class="hll"><pre><span></span><span class="k">[lib]</span><span class="w"></span>
+<span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;rustcython_string&quot;</span><span class="w"></span>
+<span class="na">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">[&quot;dylib&quot;]</span><span class="w"></span>
+</pre></div>
+<p>On the cython side, we only need declare the function as external, but if we want to
+work with the python object, we need to both be able to get a pointer to the string out,
+and construct a new instance with the result from Rust. This looks like:</p>
+<p>Cython</p>
+<div class="hll"><pre><span></span><span class="kn">from</span> <span class="nn">cpython</span> <span class="n">cimport</span> <span class="n">PyUnicode_AsUTF8String</span><span class="p">,</span> <span class="n">PyUnicode_InternFromString</span>
+
+<span class="n">cdef</span> <span class="n">extern</span><span class="p">:</span>
+    <span class="n">char</span> <span class="o">*</span><span class="n">my_upper</span><span class="p">(</span><span class="n">char</span> <span class="o">*</span><span class="n">b</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">call_rust_upper</span><span class="p">(</span><span class="n">unicode</span> <span class="n">s</span><span class="p">):</span>
+    <span class="n">cdef</span> <span class="n">unicode</span> <span class="n">out</span>
+    <span class="k">return</span> <span class="n">PyUnicode_InternFromString</span><span class="p">(</span><span class="n">my_upper</span><span class="p">(</span><span class="n">PyUnicode_AsUTF8String</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+</pre></div>
+<p>To build it, you simply declare the dependent library</p>
+<div class="hll"><pre><span></span><span class="n">ext</span> <span class="o">=</span> <span class="n">Extension</span><span class="p">(</span>
+    <span class="s1">&#39;cytest&#39;</span><span class="p">,</span>
+    <span class="n">sources</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cytest.pyx&#39;</span><span class="p">],</span>
+    <span class="n">libraries</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rustcython_string&#39;</span><span class="p">],</span>
+    <span class="n">library_dirs</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;target/release&#39;</span><span class="p">],</span>
+    <span class="n">include_dirs</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;.&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+<p>... and make</p>
+<div class="hll"><pre><span></span>cargo build --release
+python setup.py build_ext --inplace
+</pre></div>
+<p>As noted, <code>cytest.call_rust_upper</code> works, but is slow compared to the builtin method, which is perhaps
+not too surprising, as we are not skipping object instantiation, but we are adding external call cruft.</p>
+<h3>arrays?</h3>
+<p>The goal here is to be fast by passing in an array of raw (UTF8) bytes and taking out bytes. I used
+<a href="https://github.com/scikit-hep/awkward-array/tree/master/awkward">awkward array</a> to wrap the array of strings. <code>awkward-array</code> is designed  for iterating into nested schema
+without creating python instances within a numba-jit function - well worth looking into for the curious. Here, though, it is just a convenience, making a bytes-type array from string data with offset start
+and end arrays, rather like Arrow layout of variable-length
+bytes data.</p>
+<p>The function <code>do_carray_upper</code> in <a href="https://github.com/martindurant/rust-cython-test/blob/master/cytest.pyx">the source</a>
+iterates over the offsets and uses cython to make pointers to pass to Rust. Data is assigned back out
+into another identical array using casting, and the whole loop shows no yellow in the cython annotation,
+i.e., no python calls at all. The function, to my surprise, works!</p>
+<p><img src="https://raw.githubusercontent.com/martindurant/rust-cython-test/59686d0d6ea89c0f321a5113a19509984561d0eb/annot.pnghttps://raw.githubusercontent.com/martindurant/rust-cython-test/master/annot.png" alt="Annotation"></p>
+<p>Timing:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">awkward</span><span class="o">.</span><span class="n">StringArray</span><span class="o">.</span><span class="n">fromiter</span><span class="p">([</span><span class="s1">&#39;hello&#39;</span><span class="p">,</span> <span class="s1">&#39;oi&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000000</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">cytest</span><span class="o">.</span><span class="n">array_upper</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="n">StringArray</span> <span class="p">[</span><span class="s1">&#39;HELLO&#39;</span> <span class="s1">&#39;OI&#39;</span> <span class="s1">&#39;HELLO&#39;</span> <span class="o">...</span> <span class="s1">&#39;OI&#39;</span> <span class="s1">&#39;HELLO&#39;</span> <span class="s1">&#39;OI&#39;</span><span class="p">]</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">%</span><span class="n">timeit</span> <span class="n">cytest</span><span class="o">.</span><span class="n">array_upper</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+<span class="mi">135</span> <span class="n">ms</span>
+</pre></div>
+<p>compares to the cost for doing this in python of (75ns per .upper()) * 200000strings = 150ms.
+To actually run the list comprehension
+takes longer to account for building the list; but pandas takes even longer:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;hello&#39;</span><span class="p">,</span> <span class="s1">&#39;oi&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">1000000</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">%</span><span class="n">timeit</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">a</span><span class="p">]</span>
+<span class="mi">259</span> <span class="n">ms</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="o">%</span><span class="n">timeit</span> <span class="n">s</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+<span class="mi">488</span> <span class="n">ms</span>
+</pre></div>
+<h2>Conclusion</h2>
+<p>I made Rust do something from python! I am hoping someone can tell me how I <em>should</em> have done this.
+All the material is available on <a href="https://github.com/martindurant/rust-cython-test">github</a>, so a PR
+would be perfect.</p>
+<p>Maybe Rust is useful here, maybe not. For really solving the array-of-string processing bottleneck, I 
+now think the best solution will come from the addition of <a href="http://numba.pydata.org/numba-doc/latest/release-notes.html#version-0-41-0">strings to numba</a>,
+which has now begun. I strongly prefer this to writing kernels in C-land, I really
+want to do my development in python if I can.
+If awkward-array were to become the way to compile arbitrary python functions to process
+lists-of-strings in a parquet column, for example, all the better.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

@@ -1,0 +1,109 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Python and Big Data storage — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Python and Big Data storage</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2016-12-21
+  </p>
+  <p>The python ecosystem is excellent for single-machine data processing and data science using popular packages such as numpy, scipy, pandas, sklearn and many others.</p>
+<p>Increasingly, the volume of data available for processing is such that single-machine, in memory analysis is no longer an option. Tools such as <a href="http://dask.pydata.org">dask</a>/<a href="http://distributed.readthedocs.io">distributed</a> allow the use of familiar python-based workflows for larger-than-memory and distributed processing. Similarly, work has been progressing to allow pythonic access to Big Data file formats such as avro (<a href="https://github.com/MaxPoint/cyavro">cyavro</a>, <a href="https://github.com/tebeka/fastavro">fastavro</a>) and parquet (<a href="https://fastparquet.readthedocs.io">fastparquet</a>) to allow python to inter-operate with other Big Data frameworks.</p>
+<h2>Big Data stores</h2>
+<p>Pushing data through some CPU cores to produce an output is only one side of the story. The data needs to first be accessible in a data storage which is accessible to the processing nodes, and possibly also for long-term archival.</p>
+<p>We have built out a number of python libraries for interacting with Big Data storage. They offer a consistent python interface for file-system like operations (mkdir, du, rm, mv, etc.), and a standard python file-like object which can be directly used with other python libraries expecting to read from files.</p>
+<p>In chronological order:</p>
+<ul>
+<li><a href="http://hdfs3.readthedocs.io/">hdfs3</a>, an interface to the HDFS distributed file-system, using the C++ <em>libhdfs3</em> library</li>
+<li><a href="s3fs.readthedocs.io">s3fs</a>, an interface to Amazon's S3 remote store, using the <em>boto3</em> library</li>
+<li><a href="https://github.com/Azure/azure-data-lake-store-python">adlfs</a>, and interface to Microsoft's Azure Datalake Store using WebHDFS-like HTTP</li>
+</ul>
+<p>Example:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">s3fs</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s3</span> <span class="o">=</span> <span class="n">s3fs</span><span class="o">.</span><span class="n">S3FileSystem</span><span class="p">(</span><span class="n">anon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">s3</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="s1">&#39;mybucket/data/file.csv.gz&#39;</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">[{</span><span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="s1">&#39;&quot;f7f330d515645996bb4b40c74fdf15c8-2&quot;&#39;</span><span class="p">,</span>
+  <span class="s1">&#39;Key&#39;</span><span class="p">:</span> <span class="s1">&#39;data/file.csv.gz&#39;</span><span class="p">,</span>
+  <span class="s1">&#39;LastModified&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2016</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">tzutc</span><span class="p">()),</span>
+  <span class="s1">&#39;Size&#39;</span><span class="p">:</span> <span class="mi">127162941</span><span class="p">,</span>
+  <span class="s1">&#39;StorageClass&#39;</span><span class="p">:</span> <span class="s1">&#39;STANDARD&#39;</span><span class="p">}]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">with</span> <span class="n">s3</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;mybucket/data/file.csv.gz&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">gzip</span><span class="o">.</span><span class="n">GzipFile</span><span class="p">(</span><span class="n">fileobj</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))</span>
+</pre></div>
+<p>Other good things include:</p>
+<ul>
+<li>loading of blocks from the data-stores, perhaps delimited by some byte-string like <code>b'\n'</code>;</li>
+<li>various ways to deliver credentials to the different backends, including kerberos ticketing for hdfs;</li>
+<li>full binary writing support;</li>
+<li>control over buffering behaviour for performance tuning;</li>
+<li>intelligent serialization allowing sharing filesystem and file objects between threads and processes, without passing credentials in-the-clear. Dask-distributed can refer to different backends by using URLs, e.g., <code>"s3://mybucket/keys.*.csv"</code>;</li>
+<li>s3fs and hdfs3 also have mutable-mapping interfaces, so that you can treat the underlying files as a dict-like key-value store, or link with higher-level libraries like <a href="https://github.com/alimanfoo/zarr">zarr</a> for data storage; </li>
+<li>specific options for various backends, such as High Availability for HDFS and requestor pays for S3.</li>
+</ul>
+<p>Things that remain to be done:</p>
+<ul>
+<li>direct text mode (although <code>io.TextIOWrapper</code> can be used)</li>
+</ul>
+<p>The future:</p>
+<ul>
+<li>A similar connector for Google Cloud Storage is in the works</li>
+</ul>
+<h3>Afterthoughts</h3>
+<p>All the file-system interfaces mentioned here are open-source, and were supported in their development by Continuum Analytics.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

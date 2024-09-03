@@ -1,0 +1,123 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Untangling a 90s data format — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Untangling a 90s data format</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2024-08-29
+  </p>
+  <h2>Summary</h2>
+<p>Here is a brief delve into the internals of "HDF4". Although this format has been
+superseded, archival data exists and is still being written in it, because why change
+a pipeline. For the purposes of <code>kerchunk</code>, I was sniped into seeing how hard it
+would be to find the binary buffer offset/sizes in a file, and found out how convoluted
+a file format can get. The result can be seen in a <a href="https://github.com/fsspec/kerchunk/pull/494">PR</a>.</p>
+<p><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/HDF_logo_%282017%29.svg/2880px-HDF_logo_%282017%29.svg.png" alt="hdf-logo" width="150"/></p>
+<h2>Kerchunk for 90s data</h2>
+<p>For those that don't know, <a href="https://fsspec.github.io/kerchunk/">kerchunk</a> is a project for
+bringing archival data into the cloud era. It find the binary buffers within array-oriented
+data formats and presents a virtual <code>zarr</code> dataset, so that you can read the data directly
+from remote, with concurrency and parallelism.</p>
+<p>Kerchunk already handled HFD5, TIFF, grib2, FITS, netCDF3 and zarr itself. But there are always
+other array storage formats that might be interesting, and it turns out that NASA has a good deal
+of HDF4 (see <a href="https://hdfeos.org/zoo/Data_Collection/index.php">here</a>). Now, there are some
+readers of this file format for python, particularly <code>rarsterio/gdal</code>, <code>`netcdf4</code>
+(recent versions) and <code>satpy</code>. However, they don't expose the internals of the file, the
+information kerchunk needs.</p>
+<p>So I started to read <a href="file:///Users/mdurant/Downloads/DS.pdf">the 222 page manual</a>. Just for fun!
+I conclude that they were after two features common in the 90s:</p>
+<ul>
+<li>in-place editing of attributes and metadata</li>
+<li>appending new arrays or extending existing arrays without rewriting the file</li>
+<li>features were added over time, but none were removed</li>
+</ul>
+<p>These concerns only make sense if you are working exclusively with local disk, with <code>seek()</code> and
+low latency. None of this is useful for archival data.</p>
+<h2>Untangling</h2>
+<p>Some interesting facets of HDF4:</p>
+<ul>
+<li>the items in the file are enumerated in a centralized index, but actually it's a linked list,
+spread throughout the file. Each item is a combination of a class identifier and a reference,
+and this combination is unique. Each item refers to an offset and length in the file.</li>
+<li>some of the items are "extended", which means that the offset/length points to another item
+<em>not</em> listed in the central index. It contains a "special" identifier, and, depending on
+that type, links to either a linked list or to a chunk manifest<ul>
+<li>for the linked list variant, you need to follow data items, each stating if it is the last,
+and giving a pointer to the data; the data is the concatenation of the data sections.</li>
+<li>chunk manifests are stored as tables: the special item links to a table description which
+gives the number of rows and the number of dimension columns; a corresponding data item
+points to the actual binary of the table (it can be read as a numpy array), but as it happens,
+this is probably also stored as a linked list extended item.</li>
+<li>each row of the chunk manifest points to yet another item, which tells you where the actual data
+for that chunk is, and if it is compressed (compression seems to be zlib in the example
+I am working from)</li>
+</ul>
+</li>
+<li>special group items include other items (as a list), which can in turn be groups too, and this
+if how the dataset is built up</li>
+<li>we realise this must be archival data written in one shot, because the arrays are actually
+contiguous, and the root group item is the last one</li>
+</ul>
+<h2>Conclusion</h2>
+<p>Well, it turns out that the chunks, in at least the data I've seen, are tiny. That means that
+kerchunking thousands of files might be problematic. However, having some considerable work,
+maybe what I have will be useful to some people.</p>
+<script data-goatcounter="https://md-blog.goatcounter.com/count"
+ async src="//gc.zgo.at/count.js"></script>
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

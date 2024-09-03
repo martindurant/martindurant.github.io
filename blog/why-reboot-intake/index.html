@@ -1,0 +1,141 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Why reboot Intake? — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Why reboot Intake?</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2024-02-06
+  </p>
+  <p><img src="https://intake.readthedocs.io/en/latest/_static/images/logo.png" alt="Logo" width="90"/></p>
+<p>Since it took me so long to make Intake "Take2" 2.0.0, I'll keep this post short.</p>
+<h2>Summary</h2>
+<p>So you have data that you want to do stuff with. Intake might be the connective
+tissue you are after.</p>
+<p>Intake was originally well received and found a small community of users. However it never
+got the attention or popularity I thought it deserved. So, as one more attempt,
+this is my effort to make it both simpler and more powerful and see if, in a crowded
+marketplace, people want to give Intake a try.</p>
+<h3>What Intake?</h3>
+<p>Intake's moto has always been: "Taking the pain out of data access and distribution"
+The main docs are at <a href="https://intake.readthedocs.io/en/latest/">https://intake.readthedocs.io/en/latest/</a> , so I won't repeat what is
+written there; but the gist is, data is everything these days, and anything that can be
+done to smooth how to locate, understand and load data, the more effective practitioners
+(data scientists, engineers, AI/ML modelers, analysts) will be. In the typical scenario,
+a given notebook or script has just some hard-coded URL/path, and the user has no idea
+of the target's provenance.</p>
+<p>Intake is all-python and likes talking to all the packages that make up the "PyData"
+ecosystem (see <a href="https://numfocus.org/sponsored-projects">numfocus</a>, <a href="https://github.com/panstacks/pandata">pandata</a>
+and others). These packages tend to focus on one thing at a time, and play nicely with
+one-another with open protocols. However, there has been no data cataloguing standard.
+Catalogs describe your datasets, providing metadata, so that you know which data
+you need for a particular job, it's characteristics and how you might load it to
+get things ready for analysis.</p>
+<p>A data warehouse or service might have a catalogue (e.g., <a href="https://docs.databricks.com/en/data-governance/unity-catalog/index.html">unity</a>
+for databricks) and even SQL servers have at least names for each table/view/query. In the
+more python-specific world, we have <a href="https://docs.databricks.com/en/data-governance/unity-catalog/index.html">dlt</a>,
+specialising in JSON-&gt;tabular, <a href="https://datasette.io/">datasette</a> for sqllite online queries
+and <a href="https://datapackage.org/standard/specifications/">datapackage</a>. But these are specific
+to platform, use case or datatype. Intake is the "everything" of data.</p>
+<h3>Why Now?</h3>
+<p>With the AI explosion, we know that CSV is not the only filetype, and indeed that tables
+alone don't solve everything. Experience with the zarr project, and particularly
+<a href="https://fsspec.github.io/kerchunk/">kerchunk</a> has shown me how complex multi-dimensional
+array (tensor) sets can be, and <a href="https://awkward-array.org/">awkward</a> demonstrated
+the importance of vectorised operations over nested, variable-length data. Defining
+how to load such data can be complex!</p>
+<p>In the meantime, <a href="https://www.dask.org/">dask</a> is not the only parallel compute
+framework around. Ray, polars and others have shows great uptake with various lazy,
+query-optimised and out-of-core workflows. Old Intake was tied to dask, which was a
+fine choice at the time, but became more obviously outdated.</p>
+<p>There was also <a href="https://github.com/intake/intake/issues/468">pushback</a> against the
+complexity of creating new plugins for Intake, especially catalogue-producing ones.
+It turns out, that many of the extra features of old Intake (caching, persistence,
+path pattern matching, the server) were very rarely used and only complicated
+developers' experience with Intake.</p>
+<h3>How better?</h3>
+<p>Intake will flourish in situations where:</p>
+<ul>
+<li>there are many datasets (so that finding the right one is a task)</li>
+<li>datasets get updated centrally (so that users would frequently have to find the "latest")</li>
+<li>many datatypes are needed for a job (if everything is a CSV, you only need one loading function)</li>
+<li>users bother to create catalogs and share them (see Anaconda's aspirational
+<a href="https://docs.anaconda.com/reusetext/notebook-data-catalog/">public catalog</a>)</li>
+</ul>
+<p>I removed what was unnecessary complexity, but made everything more generic, and
+so general-purpose. We don't depend on Dask, but any compute engine (spark, ray, duck, ...) can be and are
+integrated: when a datatype is declared (even something simple like "CSV"), it
+can be read with potentially several packages.</p>
+<p>At its core, Intake is still "simple" and lightweight: it calls functions in other packages,
+but gives pointers to users to help them make pipelines, and so easily create catalogs. You
+can</p>
+<ul>
+<li><a href="https://intake.readthedocs.io/en/latest/api2.html#intake.readers.datatypes.recommend">discover</a> what type your data is</li>
+<li><a href="https://intake.readthedocs.io/en/latest/api2.html#intake.readers.readers.reader_from_call">generate a reader</a> from a normal python line</li>
+<li><a href="https://intake.readthedocs.io/en/latest/api2.html#intake.readers.datatypes.BaseData.possible_readers">show which readers</a> can read it</li>
+<li><a href="https://intake.readthedocs.io/en/latest/api2.html#intake.readers.convert.auto_pipeline">find the path</a> from one type to any other we support</li>
+<li>make pipelines using the same methods you normally would, even combining readers</li>
+<li>add any reader to catalog with setitem</li>
+<li>make new data types and readers with very minimal code</li>
+</ul>
+<p>And here's the current image of all the transforms we currently supports. You can't see the
+detail, and that is the point:</p>
+<p><img src="https://intake.readthedocs.io/en/latest/_images/out.png" alt="Transforms" width="190"/></p>
+<script data-goatcounter="https://md-blog.goatcounter.com/count"
+ async src="//gc.zgo.at/count.js"></script>
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

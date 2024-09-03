@@ -1,0 +1,131 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>async zarr — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>async zarr</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2022-12-03
+  </p>
+  <p><img src="https://numfocus.org/wp-content/uploads/2020/01/Zarr_LogoOptions_FINAL_Horizontal_Pink300x300.png"
+alt="zarr" style="float:right;width=250px;"/></p>
+<h2>TL;DR</h2>
+<p>Another one of my little hacks this last quarter. The code presented here
+makes zarr the first async-ready pydata IO package. This might be important
+if you are already using async code, but it's particularly a big deal
+in the era of <a href="https://pyscript.net/">PyScript</a></p>
+<h3>Introduction</h3>
+<p>I hope everyone is enjoying my catching up with blogging duties, describing
+all the little side-projects I've done over the last few months. I should
+maybe also write about my core activities sometime...</p>
+<p>In this article, I'll first describe the two technologies involved here,
+the two words of the title, and then how I am combining them. There is a
+proof of concept in the linked repo at <a href="https://github.com/martindurant/async-zarr">https://github.com/martindurant/async-zarr</a> ,</p>
+<h4>What is Zarr</h4>
+<p><a href="https://zarr.readthedocs.io/en/stable/">zarr</a> is a library for n-dimensional array-oriented
+IO. It is cloud-native, offering efficient concurrent and parallel chunkwise access
+to data. The style of access is essentially numpy-like slicing, but a dataset
+can contain a hierarchical tree of related arrays, perhaps (but not necessarily)
+adhering to the netCDF data model. It has found a lot of use particularly
+in earth science, climatology and microscopy, as well as other science and engineering
+fields.</p>
+<p>Zarr is a very nice clean and simple implementation. The code is very approachable,
+as, as we see here, <em>hackable</em>.</p>
+<p>Because zarr can optionally do its IO over fsspec, in the case that you access many
+chunks of data in an array at once, those chunks will be fetched concurrently
+behind an async barrier.</p>
+<h4>What is async</h4>
+<p>Asynchronous programming is a pattern in which most of your code is waiting
+on some external stimulus most of time time. Thus, you can queue up many
+downloads concurrently, and then process the packets as they come in, rather than
+waiting for one stream to end before starting the next one. This is ideal for
+a predominantly IO library like zarr, but not well supported in the
+rest of the pydata landscape. It is far more common a pattern in server applications,
+where processing typically happens as a response to incoming requests. Note:
+the tasks happen on a single thread with an event loop - this is not the same
+as parallelism.</p>
+<p>With the arrival of <a href="https://pyscript.net/">pyscript</a> this year has upended everything!
+When running in the browser, all code is essentially running async, and any
+(HTTP) binary communications <em>must</em> be explicitly async, since blocking the
+main browser thread is not allowed.</p>
+<h3>Implementation</h3>
+<p>My attempts are in the repo: <a href="https://github.com/martindurant/async-zarr">https://github.com/martindurant/async-zarr</a>
+This implements both async for normal python and for pyscript - they have the
+same top-level functions, but different storage backends. The README shows how
+to run the code, or you can look at a
+<a href="https://nbviewer.org/github/martindurant/async-zarr/blob/main/example/notebook.ipynb">rendered notebook</a>.</p>
+<p>Some notes:</p>
+<ul>
+<li>the code shamelessly subclasses from zarr, and replicated some of the
+open functionality in zarr.core.</li>
+<li>it's pretty short!</li>
+<li>the CPython and pyodide storage backends are rather similar, except for relying
+on <code>pyodide.http</code> and <code>aiohttp</code>, respectively</li>
+<li>zarr metadata fetching is still sync, only data access is async. This was done
+for expediency.</li>
+</ul>
+<h3>What next?</h3>
+<p>There are <em>plenty</em> of issues to work out with bringing pydata IO to pyscript.
+No other data library has solved this yet, and pyscript demos are having to jump
+through many hoops or rely on text data only, which the whole threading/async
+story stabilises.
+However, my code is usable right now, and might well be useful in non-browser
+async situations too. If we manage to figure out the API ad decent testing regime,
+this package will be published and maybe upstreamed into zarr-python itself.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

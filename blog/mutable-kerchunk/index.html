@@ -1,0 +1,167 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Mutable Kerchunk References — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Mutable Kerchunk References</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2023-01-09
+  </p>
+  <h3>summary</h3>
+<p><a href="https://fsspec.github.io/kerchunk/">Kerchunk</a> is all about making a virtual
+"reference" filesystem, where each chunk of data points to a byte range in
+some remote file. These references are usually saved in JSON files elsewhere.
+We can write new data into the references file and update references to
+new locations and save the new reference set, implementing a very rudimentary
+versioning system.</p>
+<p><img src="https://fsspec.github.io/kerchunk/_static/kerchunk.png" alt="kerchunk"
+width=50 style="float:right"/>
+<img src="https://zarr.readthedocs.io/en/v2.11.2/_static/logo1.png" alt="kerchunk"
+width=50 style="float:right"/>
+<img src="https://iceberg.apache.org//img/iceberg-logo-icon.png" alt="kerchunk"
+width=50 style="float:right"/></p>
+<h2>Introduction</h2>
+<p>This idea came about from experimenting with <a href="https://iceberg.apache.org/">Apache Iceberg</a>'s
+implementation of versioned tabular (parquet) datasets
+by immutable files and "manifest" listings and the conversation started
+by <code>@rabernat</code> in
+<a href="https://github.com/zarr-developers/zarr-specs/issues/154">this zarr issue</a>.</p>
+<p>In this post, I present little hack project to make ReferenceFileSystem
+writable, so that we can make new versions of an array dataset using zarr.
+No server required.</p>
+<p>You can install the fork that makes this work as follows.</p>
+<pre><code>pip install git+https://github.com/martindurant/filesystem_spec.git@icy
+</code></pre>
+<p>The code to allow mutating and saving a ReferenceFileSystem will eventually be merged
+into <code>fsspec</code>.</p>
+<h2>Example</h2>
+<p>We start here by running the first part of the 
+<a href="https://fsspec.github.io/kerchunk/tutorial.html">kerchunk tutorial</a> 
+to produce some JSON reference sets. We'll only use one of them here.
+Let's open one of the datasets using zarr. It contains one big data array
+and smaller coordinate arrays. I <strong>do not</strong> have permission to change
+the original data in place.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fsspec</span>
+<span class="kn">import</span> <span class="nn">zarr</span>
+<span class="n">so</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;anon&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span>
+    <span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="n">fo</span><span class="o">=</span><span class="s2">&quot;01_air_pressure_at_mean_sea_level.json&quot;</span><span class="p">,</span> 
+    <span class="n">remote_protocol</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">remote_options</span><span class="o">=</span><span class="n">so</span>
+<span class="p">)</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">())</span>
+<span class="nb">list</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+</pre></div>
+<pre><code>    ['air_pressure_at_mean_sea_level', 'lat', 'lon', 'time0']
+</code></pre>
+<p>Some basic information: this array is 2.9GB in 3720 chunks:</p>
+<div class="hll"><pre><span></span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> 
+ <span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="o">.</span><span class="n">chunks</span><span class="p">,</span> 
+ <span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="o">.</span><span class="n">nchunks</span><span class="p">,</span>
+ <span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="o">.</span><span class="n">nbytes</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+<pre><code>    ((744, 721, 1440), (24, 100, 100), 3720, 2.8776025772094727)
+</code></pre>
+<p>It contains data with values near 100000 (pressure in Pa, one assumes).
+Here are two very small sections.</p>
+<div class="hll"><pre><span></span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">],</span>
+ <span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">690</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">])</span>
+</pre></div>
+<pre><code>    (array([99510.69, 99512.44, 99514.44, 99516.44], dtype=float32),
+     array([99152.44, 99164.44, 99176.69, 99188.69], dtype=float32))
+</code></pre>
+<p>Let's modify some data! This writes a (temporary) local file and
+updates the appropriate reference to point to it.</p>
+<div class="hll"><pre><span></span><span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
+<span class="n">fs</span><span class="o">.</span><span class="n">save_json</span><span class="p">(</span><span class="s2">&quot;air_modified.json&quot;</span><span class="p">)</span>
+</pre></div>
+<p>Now we can load the new reference set, and indeed the values have
+changed. The <em>unchanged</em> portion is still loading from remote,
+but the changed version is loading from local.</p>
+<div class="hll"><pre><span></span><span class="n">fs2</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span>
+    <span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="n">fo</span><span class="o">=</span><span class="s2">&quot;air_modified.json&quot;</span><span class="p">,</span> 
+    <span class="n">remote_protocol</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">remote_options</span><span class="o">=</span><span class="n">so</span>
+<span class="p">)</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">())</span>
+<span class="p">(</span><span class="n">g2</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">],</span>
+ <span class="n">g2</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">690</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">])</span>
+</pre></div>
+<pre><code>    (array([49755.344, 49756.22 , 49757.22 , 49758.22 ], dtype=float32),
+     array([99152.44, 99164.44, 99176.69, 99188.69], dtype=float32))
+</code></pre>
+<p>but the originals have not changed and only access the remote versions:</p>
+<div class="hll"><pre><span></span><span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span>
+    <span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="n">fo</span><span class="o">=</span><span class="s2">&quot;01_air_pressure_at_mean_sea_level.json&quot;</span><span class="p">,</span> 
+    <span class="n">remote_protocol</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">remote_options</span><span class="o">=</span><span class="n">so</span><span class="p">,</span>
+    <span class="n">skip_instance_cache</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">zarr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fs</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">())</span>
+<span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">],</span>
+ <span class="n">g</span><span class="o">.</span><span class="n">air_pressure_at_mean_sea_level</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">690</span><span class="p">,</span> <span class="mi">1000</span><span class="p">:</span><span class="mi">1004</span><span class="p">])</span>
+</pre></div>
+<pre><code>    (array([99510.69, 99512.44, 99514.44, 99516.44], dtype=float32),
+     array([99152.44, 99164.44, 99176.69, 99188.69], dtype=float32))
+</code></pre>
+<p>So the two reference files are <strong>snapshots</strong> of the data with an
+edit between, and we only saved new data for the one chunk where we actually made a
+change.
+One might imagine keeping the two dataset specs side by side in an
+<a href="https://intake.readthedocs.io/en/latest/">Intake</a> catalogue describing
+the two snapshots and provenance in metadata. This is clearly not a
+version control system for array data, but perhaps part of one.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

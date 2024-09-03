@@ -1,0 +1,130 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Pandas and memory allocation — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Pandas and memory allocation</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2017-01-19
+  </p>
+  <h3>Introduction</h3>
+<p>I have been working on <a href="https://fastparquet.readthedocs.io">fastparquet</a> since mid-October: a library to efficiently read and save pandas dataframes in the portable, standard format, Parquet.</p>
+<p>As of the new year, the functionality is largely complete, including reading and writing to directory-partitioned files on remote file-systems. As the name suggests, one of the main purposes of fastparquet was to have higher performance than the legacy <a href="https://github.com/jcrobak/parquet-python">parquet-python</a>. This was done with a combination of Numpy- and Numba-accelerated methods. Monitoring indicated that at this stage, disk read times were becoming a significant fraction of total read times, so something was going right.</p>
+<p>Having dealt with some of the bottlenecks, some things become important that the casual user rarely thinks about. The rest of this article is about eliminating in-memory duplication of data, which both takes time to do, and can explode memory use for big data-sets, filling up all usable RAM.</p>
+<h3>The problem</h3>
+<p>In December, performance tests were undertaken by the <a href="http://datashader.readthedocs.io">datashader</a> team with the US census dataset, 300M+ rows, each containing latitude, longitude and a race category. The size of the data in memory as a pandas dataframe is about 5GB, if the race column is coded as a categorical. Having converted to parquet, the read time was somewhat slow compared to feather and bcolz formats. Profiling (e.g., with <a href="https://jiffyclub.github.io/snakeviz/">snakeviz</a>) indicated that the majority of the time was spent within the pandas library.</p>
+<p><a href="https://github.com/fabianp/memory_profiler">Profiling memory</a> showed something surprising</p>
+<p><img src="../../img/mem.png" alt="memory start"></p>
+<p>where</p>
+<ul>
+<li>the time-steps are 0.1s, approximately</li>
+<li>total memory usage is for the process, so complicated by the workings of garbage collection</li>
+<li>the horizontal dashed line is the final in-memory size of the data-set.</li>
+</ul>
+<p>We find two main effects:</p>
+<ul>
+<li>a saw-tooth notch corresponding to each row-group of the data</li>
+<li>an extended bump up to almost 8GB (on a 16GB machine) after all the data has been apparently loaded in.</li>
+</ul>
+<p>What's going on here?</p>
+<h3>Causes</h3>
+<p>Each row group was being loaded as follows:</p>
+<ul>
+<li>read each required column (all three columns in this case) as a numpy array</li>
+<li>form a dataframe using <code>pd.DataFrame({col1: arr1, ...})</code></li>
+</ul>
+<p>and finally create output dataframe from the set of row-groups: <code>pd.concat(iterable_of_row-groups)</code>. (An earlier version has a list of row-groups, this makes no difference, as <code>concat</code> loads the whole thing anyway).</p>
+<p>It runs out that Pandas <em>never</em> forms dataframes by reference, but always copies all data into new internal numpy arrays. Thus each row-group's worth was being copied when creating the intermediate dataframes, and everything was being duplicated again when creating the final output. Pandas does not provide a way to pre-assign memory so that you can assign directly to it as you might do with numpy arrays (<code>numpy.empty</code>).</p>
+<h3>Solution</h3>
+<p>The module <a href="https://github.com/dask/fastparquet/blob/master/fastparquet/dataframe.py">here</a> assigns an empty dataframe with given types, and returns both a reference to the dataframe and references to the numpy arrays of each column (as a dictionary), so that they can be directly assigned to. Note the subtlety concerning categorical type: the associated array time will be integer, but the size of that integer depends on the number of labels we expect; furthermore, categorical arrays also need to surface the array associated with the labels, so that those can be filled in at write time.</p>
+<p>With this pre-assignment, the code had to be changed substantially, so that the dataframe was created up-front, and then the appropriate numpy array section passed to each invocation of the column reader. At this point, only code above the column reader level had been changed, and the change within the column reader amounted to</p>
+<div class="hll"><pre><span></span><span class="k">return</span> <span class="n">out</span>
+</pre></div>
+<p>-&gt;</p>
+<div class="hll"><pre><span></span><span class="n">assign</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">out</span>
+</pre></div>
+<p>(with special treatment for categoricals, which also had to assign the category labels).</p>
+<p>Memory use after Pandas preallocation, note the greatly reduced execution time
+<img src="../../img/mem_after.png" alt="memory after"></p>
+<p>Hurray! The peak of our curve is now only slightly above the level required for data itself (dotted line), and the large bump in the first plot, associated with concatenating data-frames, is gone, saving us time.</p>
+<h3>Further improvements</h3>
+<p>Some further tinkering produced added small improvements.</p>
+<ul>
+<li>To expose the number-of-labels for categoricals, which was already in the dataframe allocation function, at the top level, such that the loading function now looks like<div class="hll"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;race&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">})</span>
+</pre></div>
+</li>
+<li>We removed the unnecessary looping in the column reader which would read each data page into a list, before running through a loop applying those values to the pre-allocated memory. The two loops have been merged. </li>
+<li>splitting the single <code>assign[:] =</code> statement into a few ones, which only affects columns containing NULLs.</li>
+</ul>
+<p>Memory use with reduced looping and category number mapping:
+<img src="../../img/mem_last.png" alt="memory last"></p>
+<p>The smaller-scale saw-tooth pattern indicates that there is still some data duplication and assign/forget of array space going on, but clearly much better than before.</p>
+<h3>What wasn't done</h3>
+<p>The data pipeline is now as follows:</p>
+<ul>
+<li>read data into a bytes object</li>
+<li>if compressed, decompress into another (bigger) bytes object</li>
+<li>read into an array (using bytes as read-only buffer if in plain encoding)</li>
+<li>convert to complex type, if necessary</li>
+<li>apply NULLs, if there are any</li>
+<li>assign section of pre-allocated array</li>
+</ul>
+<p>For the census data (no nulls, no conversions, no compression), this all amounts to one extra copy: the buffer of the pre-allocated array could have been filled using the standard file's <code>readinto</code> method; but given that we want to allow usage of other file-like objects such as <code>S3File</code>s, the copy may be unavoidable.</p>
+<p>For arbitrary data, there are many possible paths through the steps above, not to mention that some data conversions can be done in-place and others cannot.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

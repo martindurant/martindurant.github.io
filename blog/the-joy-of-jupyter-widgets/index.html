@@ -1,0 +1,88 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>The joy of jupyter widgets — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>The joy of jupyter widgets</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2018-11-23
+  </p>
+  <p>Since the start of this year, I have been involved with the <a href="https://intake.readthedocs.io/en/latest/">Intake</a> project. Intake is all about how to describe and access data and building catalogs, but <strong>this</strong> article is about the GUI, which was built quickly with <a href="https://ipywidgets.readthedocs.io/en/stable/">jupyter widgets</a> (formerly <code>ipywidgets</code>).</p>
+<h2>The need for a GUI</h2>
+<p>Without going into the details of Intake (please, read about it!), the need for a graphical interface alongside the programmatical one was recognised early on. The initial aim was to use <a href="https://jupyterlab.readthedocs.io/en/stable/">jupyter-lab,</a>, which is designed to allow for graphical/interactive panels alongside notebooks and interactive python sessions. However, extensions are written in typescript and require a build-and-deploy cycle to see the results of changes. I, to my shame, am no typescript programmer and I don't even know how the build system works, though doubtless I could begin <a href="https://github.com/jupyterlab/extension-cookiecutter-ts">here</a></p>
+<h2>Jupyter Widgets to the rescue</h2>
+<p>Fortunately, jupyter-widgets is <em>really simple</em>: you can instantiate in a cell and render the interactive output immediately. Because the notebook already ensures that the kernel is running and sets up comms between front- and back-ends, the user interaction logic is wholly python-side.</p>
+<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">ipywidgets</span>
+<span class="n">clicks</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">button</span> <span class="o">=</span> <span class="n">ipywidgets</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Click me!&#39;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">action</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">clicks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="n">button</span><span class="o">.</span><span class="n">on_click</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+<span class="n">button</span>
+</pre></div>
+<p>An appropriate button appears, and clicks are nicely collected in the <code>clicks</code> variable. Given the existence of layouts with <a href="https://ipywidgets.readthedocs.io/en/stable/examples/Widget%20Styling.html">flexible sizing</a>, where you can add and remove elements at will, this is starting to feel quite a lot like my <a href="https://docs.anaconda.com/anaconda/navigator/">earlier experience</a> with PyQT. Sure, there is no formal message-passing mechanism, but for simple enough interfaces, you can get by. You can even employ CSS within the elements for detailed styling.</p>
+<h2>Forward</h2>
+<p>The <a href="https://intake.readthedocs.io/en/latest/gui.html">resultant GUI</a> is already very useful, and required <a href="https://github.com/ContinuumIO/intake/blob/master/intake/gui/widgets.py">little code</a> to produce. It can yet be enhanced to do things like show a data extract or plots of the selected data-set, since you can embed other <code>display</code>-able elements or HTML such as produced by Bokeh.
+Furthermore, the output can already be send to a separate panel in jupyter-lab using a <a href="https://github.com/jupyter-widgets/jupyterlab-sidecar">sidecar</a>.</p>
+<p>However, there is no reason that this should be the only GUI for Intake. Come one, come all! If someone would like to help be typescript something for jupyter-lab, I would appreciate it, it would be nice to have a permanent data browser in the session not tied to a particular notebook.</p>
+<p>Probably the rapidly developing <a href="https://panel.pyviz.org/user_guide/Widgets.html">panel</a> library will be able to produce a similarly flexible interface which can be run within or without a notebook, and integrates more naturally with bokeh tabular and graphical output.</p>
+<p><strong>Summary</strong>: working with jupyter-widgets was remarkably smooth and easy, and I got to a useful, functional interface far faster than I had thought it would take.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

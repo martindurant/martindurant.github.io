@@ -1,0 +1,102 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>DaskBERG! — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>DaskBERG!</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2022-11-29
+  </p>
+  <p><img src="https://iceberg.apache.org//img/iceberg-logo-icon.png" alt="berg" width="50"/></p>
+<h3>TL;DR</h3>
+<p>I hacked together a dask client to Apache Iceberg! It can work on
+the files stored by Iceberg or talk with the REST service to get the
+locations of those files. There is no writing support right now,
+but there could be quite soon.</p>
+<p><a href="https://github.com/martindurant/daskberg">https://github.com/martindurant/daskberg</a></p>
+<h3>Introduction</h3>
+<p>First there were database engines, and then came big data with its
+efficient binary columnar storage (parquet and ORC). But we wanted
+both together! Transactions and time-checkpoints along with throughput
+and efficiency! So the world has moved on again, and now there are
+various "Lake" technologies around layering on top of parquet to get
+the best of both.</p>
+<p>When the dask team talked about this some time ago, one effort resulted
+to read from Apache Deltalake:
+<a href="https://github.com/rajagurunath/dask_deltatable">dask-deltalake</a>. The
+view of some of the team was that another Apache project, Iceberg, was
+the better designed offering around, but nothing was done at the time.
+Recently I happened to be thinking about Iceberg because of a particular
+dataset I came across and <a href="https://github.com/zarr-developers/zarr-specs/issues/154">this</a>
+long discussion about Iceberg-like ideas beyond tabular data.</p>
+<p>So I got to work...</p>
+<h3>Outcome</h3>
+<p>Here is the repository of my code:
+<a href="https://github.com/martindurant/daskberg">https://github.com/martindurant/daskberg</a> . This did not cost me a huge
+amount of effort and was fun and educational to dig into.
+The README example shows a full Iceberg workflow on some super simple test data, but
+already enough to show the power of the code. This is an open invitation
+for people to try it out and see how far you can push it!</p>
+<h3>pyiceberg?</h3>
+<p>The core team behind Iceberg itself does also work on a
+<a href="https://pypi.org/project/pyiceberg/">python client</a>.
+It is not yet ready for any read operations. Maybe eventually the work
+I did will get folded into their library, or they will code their own
+way to integrate with dask. Either option would be fine with me.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

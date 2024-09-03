@@ -1,0 +1,264 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>What’s new with fastparquet? — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>What’s new with fastparquet?</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2021-02-26
+  </p>
+  <p>Over the last six months, I have put considerable effort into modernizing and improving fastparquet; the Python parquet read/write package that has been serving the PyData community for five years. With these new additions, there are several features that are now possible, many things are faster, and most importantly, nothing is slower (at least on the read side!)</p>
+<p>A little background on myself, I started my career as an astrophysicist and worked in multiple academic positions, including medical imaging research. After this, I became a data scientist, and have been a member of the open source Dask, Intake, Streamz, fsspec and Zarr maintenance teams, with specializations in data access, remote filesystems and data formats. I have been at Anaconda for six years as a software engineer where I’ve primarily worked on our open-source team.</p>
+<h2>Background</h2>
+<p>Fastparquet was the first reader and writer for parquet format big data which worked in Python without needing Spark or other non-Python tools. It offers performant conversion to/from pandas DataFrames, and is well integrated with Dask. Until the arrival of <code>pyarrow</code>'s parquet integration, it was the only vectorized parquet engine (see also the earlier parquet-python, with which it shares some code).</p>
+<p>As of the start of 2021, <code>fastparquet</code> remained one of the major packages for pandas&lt;-&gt;parquet, with ~1M downloads per month according to pypistats. However, it had not seen any substantial development in some time.</p>
+<h2>Fastparquet’s Improvement Plan</h2>
+<p>In April 2021, I created an issue detailing things that I viewed as important improvements to implement. This list has been augmented in the months since, but most of the items were there in the initial form. As you can see, almost all of them have been fulfilled (see also The Future section, below).</p>
+<p>The implementation of the various tasks resulted in a slew of releases, and here we will compare the read performance of versions 0.7.1 and 0.5.0.</p>
+<h3>Dependencies</h3>
+<p>The cramjam package appeared in 2020, linking Rust implementations of the compression codecs needed by parquet (except LZO, which no one uses!). This simplified fastparquet's dependencies and users no longer have to seek around for extra packages for snappy, brotli, or zstd. In addition, <code>cramjam</code> also can be faster in some circumstances.</p>
+<p>Fastparquet was originally built with acceleration provided by Numba. This worked very well for en/decoding the various byte representations possible in the parquet spec. Unfortunately, Numba does not handle (Python) strings, so there was also some Cython code present too.</p>
+<p>We rewrote all the Numba code to Cython. This did not result in better performance, but reduced the size of the environment needed (no LLVM!) and eliminates some runtime compilation.</p>
+<p>Finally, in PR, we are close to eliminating the need for <code>thrift</code>, using our own implementation.</p>
+<p><strong>Conda environment size</strong></p>
+<table>
+<thead><tr>
+<th>0.5.0</th>
+<th>0.7.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>378MB</td>
+<td>263MB</td>
+</tr>
+</tbody>
+</table>
+<p>(With latest Python, pandas, etc, and compressors included with 0.5.0)</p>
+<h3>Feature Development</h3>
+<p>We’ve made quite a few new changes to improve fastparquet, so I outlined some of the highlights that make the experience better for the user.</p>
+<p>Loading of directories without a <code>_metadata</code> file: this was always possible, but required the user to explicitly get a list of files first
+Read and write of "data page header 2": added to the parquet spec a long time ago, only a few frameworks are starting to produce V2 files, but we need to be able to read them. It also happens that there are genuine performance benefits to using V2.
+Encoding types RLE_DICT and DELTA, for compatibility
+Nullable types and ns-resolution times, for better matching of pandas and parquet type systems. Nullable types are on by default, so optional int columns become pandas nullable Int columns on read, but the old behavior of converting to float and using NaN to mark nulls is still available.
+Row-filtering: to only produce the DataFrame for the data you actually want. This is a two-step process, one to load the columns you filter on and one to apply the filter. The aim is not speed, but lower memory footprint (since parquet is a block-wise format, you do end up reading the same number of bytes).</p>
+<h3>Performance</h3>
+<p>Most of the effort went here, specifically the read-side performance. Here are some selected benchmarks. Keep in mind that benchmarks are biased and that the same measuring techniques were used to guide the optimization process. Numbers are relative and as given by my machine.</p>
+<p><strong>Open dataset "split"</strong></p>
+<p>This is one of fastparquet's test suite data-sets, with many files and not much data. Times in ms.</p>
+<table>
+<thead><tr>
+<th>0.5.0</th>
+<th>0.7.1</th>
+<th>PR#633</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.66</td>
+<td>0.81</td>
+<td>0.31</td>
+</tr>
+</tbody>
+</table>
+<p>Some improvements were made in <code>fsspec</code> around listing and getting information
+about local files. Similarly, remote files will be fetched concurrently, when no
+global metadata is available.</p>
+<p><strong>Time to first read</strong></p>
+<p>Time to import, open and read the same “split” dataset, in seconds (i.e., this number is much bigger than in the previous subsection!).</p>
+<table>
+<thead><tr>
+<th>0.5.0</th>
+<th>0.7.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.4</td>
+<td>0.68</td>
+</tr>
+</tbody>
+</table>
+<p>The difference is mostly due to no runtime compilation in 0.7.1. The import time is about the same and dominated by pandas.</p>
+<p><strong>Column read time</strong></p>
+<p>Based on the benchmarks script at fastparquet/benchmarks/columns.py, using columns of random data. As opposed to the "split" dataset, above, these have sufficient data volume such that file opening and metadata parsing are insignificant. Times are in relative units.</p>
+<table>
+<thead><tr>
+<th></th>
+<th>0.5.0</th>
+<th></th>
+<th>0.7.1,v1</th>
+<th></th>
+<th>0.7.1,v2</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>uncomp</td>
+<td>zstd</td>
+<td>uncomp</td>
+<td>zstd</td>
+<td>uncomp</td>
+<td>zstd</td>
+</tr>
+<tr>
+<td>bool</td>
+<td>4.0</td>
+<td>5.9</td>
+<td>6.3</td>
+<td>6.1</td>
+<td>6.2</td>
+<td>6.4</td>
+</tr>
+<tr>
+<td>bytes</td>
+<td>66</td>
+<td>107</td>
+<td>65</td>
+<td>66</td>
+<td>6.2</td>
+<td>62</td>
+</tr>
+<tr>
+<td>cats</td>
+<td>7.3</td>
+<td>22.9</td>
+<td>6.8</td>
+<td>21.8</td>
+<td>6.5</td>
+<td>21.4</td>
+</tr>
+<tr>
+<td>float64</td>
+<td>52</td>
+<td>149</td>
+<td>43</td>
+<td>146</td>
+<td>23.9</td>
+<td>133</td>
+</tr>
+<tr>
+<td>time64</td>
+<td>110</td>
+<td>259</td>
+<td>76</td>
+<td>223</td>
+<td>39.2</td>
+<td>182</td>
+</tr>
+<tr>
+<td>uint8</td>
+<td>20.0</td>
+<td>107</td>
+<td>19.3</td>
+<td>76</td>
+<td>18.5</td>
+<td>75</td>
+</tr>
+<tr>
+<td>UTF8</td>
+<td>191</td>
+<td>197</td>
+<td>113</td>
+<td>111</td>
+<td>113</td>
+<td>112</td>
+</tr>
+</tbody>
+</table>
+<p>We can see that 0.7.1 is generally faster or the same (except marginally for bool),
+and that using V2 pages can make a big difference for float and time (and int32/64, not included). We also see that the zstd compression is the same or better and, again, V2 can make a positive impact. This difference was less apparent for gzip (always slow) and snappy (always fast, but no effective compression for random data).</p>
+<h2>The Future</h2>
+<p>The only major effort remaining from the April plan is an implementation of thrift
+reading/writing that is independent of the thrift package. PR#663 does this work, and although
+rough edges remain, raw performance is very encouraging:</p>
+<p>Time to parse "split" dataset metadata block of bytes in memory, in ms</p>
+<table>
+<thead><tr>
+<th>0.5.0</th>
+<th>PR#633</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>184</td>
+<td>52</td>
+</tr>
+</tbody>
+</table>
+<p>Round-trip time with <code>pickle.dumps/pickle.loads</code></p>
+<table>
+<thead><tr>
+<th>0.5.0</th>
+<th>PR#633</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>270</td>
+<td>137</td>
+</tr>
+</tbody>
+</table>
+<p>Obviously, new things have occurred during this process, and there are more things that
+could be done, for both performance and features. I would that the current situation is good,
+and that fastparquet continues to thrive!</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

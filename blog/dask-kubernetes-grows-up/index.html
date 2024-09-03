@@ -1,0 +1,101 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>dask-kubernetes evolves — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>dask-kubernetes evolves</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2017-07-05
+  </p>
+  <p>In the <a href="moving-to-google-compute-and-storage/">last post</a> I demonstrated a typical work-flow for processing data on Google Container Engine with <a href="http://dask.pydata.org/en/latest/">Dask</a> and <a href="https://fastparquet.readthedocs.io/en/latest/">fastparquet</a>. A critical piece for making this quick and easy was dask-kubernetes, a simple set of scripts and templates for spinning up a distributed Dask cluster.</p>
+<p>Since that time, <a href="https://github.com/dask/dask-kubernetes">dask-kubernetes</a> has progressed to become a much more complete package with a CLI and various nice options. The repo has now graduated to the Dask organization, and joins several Dask deployment methods. With the anecdotal improvement in performance of GCE and GCS over EC2 and S3, usage is expected to increase in the near future.</p>
+<h2>What is dask-kubernetes?</h2>
+<p>Dask is a parallel execution engine for python, with a particular emphasis on data processing and analytic work-flows. It makes the transition from single-machine, in-memory computation with Numpy and pandas to out-of-core, parallelized and distributed (across a cluster) trivial in many cases, and allows for for complex custom parallel algorithm development. Kubernetes is a container orchestration system, producing many isolated, identical runtimes from templates, distributed across a cluster of machines. These two play very nicely together: kubernetes can easily create a set of homogenous Dask workers on Google Container Engine (GCE) and present the user with both the scheduler end-point for external access to the scheduler or an in-container editor environment using Jupyter.</p>
+<p>Dask-kubernetes provides a nice simple command-line interface for setting up such clusters in GCE with properties suitable for a wide variety of computational needs.</p>
+<p>All the containers use an <a href="https://hub.docker.com/r/mdurant/dask-kubernetes/~/dockerfile/">image</a> which includes typical python numerical packages as well as everything Dask users generally may need for big data applications, visualization, interaction. The origin of the image is configurable, so interested users could also make their own.</p>
+<p>One particular nice feature, is the inclusion <a href="http://gcsfs.readthedocs.io/en/latest/">gcsfs</a>, which also graduated to the Dask organization on github. In the clustered deployment, you can now pass <code>token='cloud'</code> when instantiating, or when using a Dask IO function.</p>
+<h2>New configuration system</h2>
+<p>A default configuration is provided in a simple <a href="https://github.com/martindurant/dask-kubernetes/blob/master/dask_kubernetes/cli/defaults.yaml">yaml file</a>. This can be copied and edited, and passed to dask-kubernetes at cluster creation time. Any settings not specified in the given file will take the default values.</p>
+<pre><code>dask-kubernetes create my_new_cluster settings.yaml
+</code></pre>
+<p>In addition, individual parameters can be set on the command line. In the case that the same setting is specified both in a given file and on the command line, the command line takes precedence.</p>
+<pre><code>dask-kubernetes create -s jupyter-port=443 my_other_cluster
+</code></pre>
+<p>You can still use <code>kubectl</code> to interact directly with containers, but there should be much less cause to do so.</p>
+<h2>New commands</h2>
+<p>A few highlights of the main commands:</p>
+<ul>
+<li>dashboard: Open the remote kubernetes console in the browser, for an overview of the cluster, detailed setting of parameters, and diagnostics</li>
+<li>info: Detailed info about your running  dask cluster, with the pod IDs and the URLs for the scheduler and notebook</li>
+<li>lab: Open a <a href="http://jupyterlab.github.io/jupyterlab/">jupyter lab</a> session in the browser, a more IDE-like experience than the traditional notebook server.</li>
+<li>notebook: Open the remote jupyter notebook in the browser; some example dask workflow notebooks are provided to get started.</li>
+<li>resize: Resize a cluster explicitly; if using auto-scaling, only resize the number of pods.</li>
+<li>status: Open the dask status dashboard in the browser, showing CPU and memory use, and the task processing stream.</li>
+</ul>
+<h2>Auto-scaling</h2>
+<p>Google Container Engine supports <a href="http://blog.kubernetes.io/2016/07/autoscaling-in-kubernetes.html">auto-scaling</a>: when more pods are scheduled than can be accommodated by the current nodes, more nodes are spun up until all are can be scheduled. Similarly, if pods are terminated, leaving nodes underutilized, then pods will be moved such that a node is left empty of work, and that node will eventually be reaped. This means that, with auto-scaling enabled, one needs only set the number of desired pods (workers) and the rest will take care of itself.</p>
+<p>In dask-kubernetes, auto-scaling is controlled with the <code>cluster.autoscaling</code> parameter, and the minimum and maximum  number of permitted nodes should be given. Note that the dask scheduler and jupyter notebook will be pinned to the first node, so that if kubernetes decides to move pods around, those will not get moved and restarted. The dask scheduler is resilient to worker restarts, and will repeat tasks if necessary to generate requested output.</p>
+<p>Note that GCE typically takes over ten minutes between a node becoming idle, and stopping that node. This is partly to prevent rapid starting and stopping of nodes when the number of pods is in flux, and partly because of internal billing requirements.</p>
+<h2>Still to do</h2>
+<ul>
+<li>documentation on readthedocs, with comparisons to the other dask deployment methods (dask-ec2, dask-ssh, dask-yarn, dask-sge, dask-marathon, currently a bunch of <a href="http://distributed.readthedocs.io/en/latest/setup.html#cluster-resource-managers">links</a> on the dask-distributed docs);</li>
+<li>application of parameter changes to the cluster on-the-fly, which will require logic to decide which parameters need cluster-level changes (e.g., changing the machine instance type), versus ones that need dask-cluster restarts (e.g., updating the container image) and ones that can be implemented without cluster interruption (increasing the worker memory or thread-count). Currently commands "rerender" and "update config" will have no effect in most cases.</li>
+<li>other smaller issues on <a href="https://github.com/dask/dask-kubernetes/issues">github</a> - please post any requests!</li>
+</ul>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

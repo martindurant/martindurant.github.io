@@ -1,0 +1,151 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Announcing filesystem-spec — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Announcing filesystem-spec</h2>
+  
+  <p class="meta">
+    written by
+    
+      <a href="https://twitter.com/martin_durant_">Martin Durant</a>
+    
+    on 2019-02-22
+  </p>
+  <p>Version 0.2.0 of <code>filesystem-spec</code> (<code>fsspec</code> for the remainder of this article) has been released, and everyone is invited to try it and make their thoughts known!</p>
+<p>On github: <a href="https://github.com/martindurant/filesystem_spec">https://github.com/martindurant/filesystem_spec</a></p>
+<p>Documentation: <a href="https://filesystem-spec.readthedocs.io/">https://filesystem-spec.readthedocs.io/</a></p>
+<p>Installation</p>
+<div class="hll"><pre><span></span><span class="go">conda install -c conda-forge fsspec</span>
+<span class="gp"># </span>or
+<span class="go">pip install fsspec</span>
+</pre></div>
+<h2>Overview</h2>
+<p>I have been previously involved with building interfaces to storage systems, which have become popular and widely used:</p>
+<ul>
+<li><a href="http://s3fs.readthedocs.io/en/latest/">s3fs</a> for AWS S3</li>
+<li><a href="http://gcsfs.readthedocs.io/en/latest/">gcsfs</a> for Google Storage</li>
+<li>Microsoft <a href="https://azure-datalake-store.readthedocs.io">azure-datalake-store</a></li>
+<li><a href="https://hdfs3.readthedocs.io">hdfs3</a> for Hadoop</li>
+</ul>
+<p>and a general mechanism for accessing files on these systems within <a href="http://docs.dask.org/en/latest/remote-data-services.html">Dask</a>. For the purposes of Dask, it was critical to be able to resolve glob patterns on a given file-system, pass arguments (such as credentials) through to that system, and be able to read arbitrary sections of some file without downloading or reading the whole file. This is how functions such as <code>dd.read_csv</code> are distributed to the nodes of a Dask cluster, and each worker reads different parts of the data files from network or remote storage.</p>
+<p><code>fsspec</code> defines an abstract file-system for other filesystem interfaces to be based on, with an interface similar to the builtin <code>os</code> module. It is meant to unify the above interfaces and codify all of the extra functionality - not to mention cutting out a lot of duplication between the projects. This means a unified API for accessing any file storage-like system (archive, cluster, remote), do normal file operations (copy, delete, list) and obtain file-like instances to pass to other libraries. It also makes it much easier to add higher-level functionality to all the implementations, such as transparent compressed and text-mode files, a key-value mapping, file search and transactional writing, all in one place.</p>
+<h2>Usage</h2>
+<p>Whilst s3fs and gcsfs remain separate projects for now, both have integration PRs to show how they would be adapted to fsspec, without changing the user experience. These PRs mostly remove duplicated code. The following implementations are included in the repo, and we can use them for a demonstration:</p>
+<ul>
+<li>SSH</li>
+<li>Hadoop HDFS</li>
+<li>HTTP</li>
+<li>SFTP</li>
+<li>FTP</li>
+<li>memory</li>
+<li>webHDFS</li>
+<li>local file-system</li>
+<li>ZIP file</li>
+</ul>
+<p>Every file-system has the same API.</p>
+<p>The completeness of each implementation varies: HTTP and zip-files are read-only, for example, and not all HTTP servers respect HEAD and byte-range requests.</p>
+<p>An example use of the interface may be as follows. Start an FTP server in one process (this would normally be running elsewhere):</p>
+<div class="hll"><pre><span></span><span class="go">python -m pyftpdlib -d /Users/tmp/data -u user -P pass -w</span>
+</pre></div>
+<p>and in python</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">fsspec</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span><span class="s1">&#39;ftp&#39;</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">2121</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s1">&#39;pass&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+<span class="p">[</span><span class="s1">&#39;/text&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;/text2&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;/comp.zip&#39;</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="s1">&#39;/text&#39;</span><span class="p">)</span>
+<span class="n">Hello</span> <span class="n">fsspec</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;/text&#39;</span><span class="p">)</span>
+<span class="p">{</span><span class="s1">&#39;modify&#39;</span><span class="p">:</span> <span class="s1">&#39;20190223200610&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;perm&#39;</span><span class="p">:</span> <span class="s1">&#39;radfwMT&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span>
+ <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;file&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;unique&#39;</span><span class="p">:</span> <span class="s1">&#39;1000004g202c662ff&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;/text&#39;</span><span class="p">}</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="s1">&#39;/text&#39;</span><span class="p">)</span>
+<span class="sa">b</span><span class="s1">&#39;Hello fsspec</span><span class="se">\n</span><span class="s1">&#39;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/text2&#39;</span><span class="p">,</span> <span class="s1">&#39;wt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="o">...</span>     <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Fóreign téxtá&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/text2&#39;</span><span class="p">,</span> <span class="s1">&#39;rt&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="o">...</span> <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+<span class="o">...</span> <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+ <span class="n">téxtá</span>
+</pre></div>
+<p>or even chain file-systems:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span><span class="s1">&#39;sftp&#39;</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s1">&#39;localhost&#39;</span><span class="p">)</span>  <span class="c1"># now via SSH</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/Users/mdurant/data/comp.zip&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span>  <span class="c1"># contains previous file &quot;text&quot;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs2</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span><span class="s1">&#39;zip&#39;</span><span class="p">,</span> <span class="n">fo</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">fs2</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+<span class="sa">b</span><span class="s1">&#39;Hello fsspec</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+</pre></div>
+<p>Finally, making use of the more general functionality - this is typically where external libraries would start:</p>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="n">files</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">open_files</span><span class="p">(</span><span class="s1">&#39;ftp:///text*&#39;</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">2121</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s1">&#39;user&#39;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s1">&#39;pass&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rt&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">files</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">OpenFile</span> <span class="s1">&#39;/text&#39;</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">OpenFile</span> <span class="s1">&#39;/text2&#39;</span><span class="o">&gt;</span><span class="p">]</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="k">with</span> <span class="n">files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="o">...</span>     <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+<span class="n">Hello</span> <span class="n">fsspec</span>
+</pre></div>
+<p>where each <code>OpenFile</code> is a serializable instance which points to a text-mode file-like object which could be passed to any python function that expects a file. Being serializable means that the instance can be safely passed between processes and even machines (so long as they can access the same underlying resource) - actual access only happens in the <code>with</code> context blocks.
+There is no compression in this case, but there could have been.</p>
+<h2>The future</h2>
+<p>Now that <code>fsspec</code> is here, it is conceivable that Dask could be changed to depend upon it, and so we are able to move all the file and bytes-handling stuff out of there, and so make this more widely available to people and other libraries. That is my hope. Similarly, it would make a lot of sense to eventually have s3fs and gcsfs and indeed azure-datalake depend on fsspec, and to avoid all the redundant code in the various projects.</p>
+<p>It is also much easier now to add new implementations such as azure-blob-storage and a whole host of other storage media.</p>
+<p>We need tests! We need more implementations! Perhaps more importantly, we need a conversation about the right way approach the trickier issues, such as file listing caching, read-ahead, and what to do on systems that don't have real hierarchical directories (e.g., s3).</p>
+<h5>Postscript</h5>
+<p>All <code>fsspec</code>-compliant classes also subclass from Arrow's file-system, if installed, so any Arrow function that expects one of its own file-systems will happily work with any of the implementations.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2021 by Martin Durant.
+  </footer>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
