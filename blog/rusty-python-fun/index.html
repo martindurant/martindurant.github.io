@@ -83,20 +83,20 @@ round-trip is about 6x slower than <code>'hello'.upper()</code>, but I wanted to
 <h3>Build details</h3>
 <p>How it was done may be generally useful to others. Feel free to skip this section!</p>
 <p>The Rust part is standard, with the following function (note the C semantics)</p>
-<div class="hll"><pre><span></span><span class="cp">#[no_mangle]</span><span class="w"></span>
-<span class="k">pub</span><span class="w"> </span><span class="k">extern</span><span class="w"> </span><span class="s">&quot;C&quot;</span><span class="w"> </span><span class="k">fn</span> <span class="nf">my_upper</span><span class="p">(</span><span class="n">b</span>: <span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">i8</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">u8</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
-<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">unsafe</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">CStr</span>::<span class="n">from_ptr</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">};</span><span class="w"></span>
-<span class="w">    </span><span class="n">s</span><span class="p">.</span><span class="n">to_str</span><span class="p">().</span><span class="n">unwrap</span><span class="p">().</span><span class="n">to_uppercase</span><span class="p">().</span><span class="n">as_ptr</span><span class="p">()</span><span class="w"></span>
-<span class="p">}</span><span class="w"></span>
+<div class="hll"><pre><span></span><span class="cp">#[no_mangle]</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">extern</span><span class="w"> </span><span class="s">&quot;C&quot;</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">my_upper</span><span class="p">(</span><span class="n">b</span><span class="p">:</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">i8</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="o">*</span><span class="k">const</span><span class="w"> </span><span class="kt">u8</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">unsafe</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">CStr</span><span class="p">::</span><span class="n">from_ptr</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="w">    </span><span class="n">s</span><span class="p">.</span><span class="n">to_str</span><span class="p">().</span><span class="n">unwrap</span><span class="p">().</span><span class="n">to_uppercase</span><span class="p">().</span><span class="n">as_ptr</span><span class="p">()</span>
+<span class="p">}</span>
 </pre></div>
 <p>which takes a pointer, assumes it is a valid UTF8 string, calls upper on it and returns a (C)
 pointer to the result. Note that creating a local variable from a passed pointer is always unsafe,
 but this is the only thing we can do unless we actually allocate and assign strings
 or vectors of strings within Rust.</p>
 <p>The cargo stub is straight-forward:</p>
-<div class="hll"><pre><span></span><span class="k">[lib]</span><span class="w"></span>
-<span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;rustcython_string&quot;</span><span class="w"></span>
-<span class="na">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">[&quot;dylib&quot;]</span><span class="w"></span>
+<div class="hll"><pre><span></span><span class="k">[lib]</span>
+<span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;rustcython_string&quot;</span>
+<span class="na">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">[&quot;dylib&quot;]</span>
 </pre></div>
 <p>On the cython side, we only need declare the function as external, but if we want to
 work with the python object, we need to both be able to get a pointer to the string out,
@@ -121,8 +121,8 @@ and construct a new instance with the result from Rust. This looks like:</p>
 <span class="p">)</span>
 </pre></div>
 <p>... and make</p>
-<div class="hll"><pre><span></span>cargo build --release
-python setup.py build_ext --inplace
+<div class="hll"><pre><span></span>cargo<span class="w"> </span>build<span class="w"> </span>--release
+python<span class="w"> </span>setup.py<span class="w"> </span>build_ext<span class="w"> </span>--inplace
 </pre></div>
 <p>As noted, <code>cytest.call_rust_upper</code> works, but is slow compared to the builtin method, which is perhaps
 not too surprising, as we are not skipping object instantiation, but we are adding external call cruft.</p>
@@ -164,7 +164,7 @@ which has now begun. I strongly prefer this to writing kernels in C-land, I real
 want to do my development in python if I can.
 If awkward-array were to become the way to compile arbitrary python functions to process
 lists-of-strings in a parquet column, for example, all the better.</p>
-
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
   </div>
 
 

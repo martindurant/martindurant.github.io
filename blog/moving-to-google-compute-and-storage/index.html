@@ -58,9 +58,9 @@
 </ul>
 <h2>Launching the cluster</h2>
 <p>From the local CLI, this was as simple as</p>
-<div class="hll"><pre><span></span>&gt; <span class="nb">source</span> scripts/make_cluster.sh
-&gt; kubectl get pods       <span class="c1">#  wait until pods are alive</span>
-&gt; kubectl get services   <span class="c1">#  list assigned IPs</span>
+<div class="hll"><pre><span></span>&gt;<span class="w"> </span><span class="nb">source</span><span class="w"> </span>scripts/make_cluster.sh
+&gt;<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w">       </span><span class="c1">#  wait until pods are alive</span>
+&gt;<span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>services<span class="w">   </span><span class="c1">#  list assigned IPs</span>
 </pre></div>
 <p>... and in the browser go to the external IP of the jupyter-notebook service, port 8888. Note that the password was baked into the supplied config/jupyter_notebook_config.py in the docker image.</p>
 <h2>Transferring data</h2>
@@ -569,7 +569,7 @@ Name: tip_percent, dtype: float64
 <li>currently, control of the number of nodes, containers, etc., happens from the laptop CLI. It would be possible to have the scheduler call kubernetes and be able to launch worker containers with various parameters at will, with some management interface on the scheduler</li>
 <li>gcsfs required fetching of data at 5MB boundaries, but was still not particularly fast. There is a significant overhead associated with establishing each connection. Parquet allows reading only small parts (e.g., one column) of larger files, but there may be several parts required; gcsfs allows setting the read-ahead block size, but more intelligent decisions could be made on what to read.</li>
 </ul>
-
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
   </div>
 
 
