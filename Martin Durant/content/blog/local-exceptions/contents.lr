@@ -325,6 +325,8 @@ I am not aware of any other distributed execution engine with comparable functio
 
 The real lesson, though, is that it took relatively little effort and [few lines of code](https://github.com/dask/distributed/blob/master/distributed/recreate_exceptions.py) to get this working, because the distributed scheduler is pure-python, and very approachable.
 
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 author: Martin Durant
 ---

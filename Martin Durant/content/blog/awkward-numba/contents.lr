@@ -78,6 +78,8 @@ def collect_pitch_intervals(millionsongs):
 As discussed recently in time for the Dask Distributed Summit, this can be parallelised trivially with Dask,
 assigning 1000 songs per partition
 
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 author: Martin Durant
 ---

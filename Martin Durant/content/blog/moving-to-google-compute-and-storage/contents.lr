@@ -610,6 +610,8 @@ Further thoughts:
 - currently, control of the number of nodes, containers, etc., happens from the laptop CLI. It would be possible to have the scheduler call kubernetes and be able to launch worker containers with various parameters at will, with some management interface on the scheduler
 - gcsfs required fetching of data at 5MB boundaries, but was still not particularly fast. There is a significant overhead associated with establishing each connection. Parquet allows reading only small parts (e.g., one column) of larger files, but there may be several parts required; gcsfs allows setting the read-ahead block size, but more intelligent decisions could be made on what to read.
 
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 pub_date: 2017-03-23
 ---

@@ -58,6 +58,9 @@ Note that GCE typically takes over ten minutes between a node becoming idle, and
 - documentation on readthedocs, with comparisons to the other dask deployment methods (dask-ec2, dask-ssh, dask-yarn, dask-sge, dask-marathon, currently a bunch of [links](http://distributed.readthedocs.io/en/latest/setup.html#cluster-resource-managers) on the dask-distributed docs);
 - application of parameter changes to the cluster on-the-fly, which will require logic to decide which parameters need cluster-level changes (e.g., changing the machine instance type), versus ones that need dask-cluster restarts (e.g., updating the container image) and ones that can be implemented without cluster interruption (increasing the worker memory or thread-count). Currently commands "rerender" and "update config" will have no effect in most cases.
 - other smaller issues on [github](https://github.com/dask/dask-kubernetes/issues) - please post any requests!
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 pub_date: 2017-07-05
 ---

@@ -112,6 +112,9 @@ We need tests! We need more implementations! Perhaps more importantly, we need a
 ##### Postscript
 
 All `fsspec`-compliant classes also subclass from Arrow's file-system, if installed, so any Arrow function that expects one of its own file-systems will happily work with any of the implementations.
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 pub_date: 2019-02-22
 ---

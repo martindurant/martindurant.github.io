@@ -137,6 +137,8 @@ One might imagine keeping the two dataset specs side by side in an
 the two snapshots and provenance in metadata. This is clearly not a
 version control system for array data, but perhaps part of one.
 
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 pub_date: 2023-01-09
 ---

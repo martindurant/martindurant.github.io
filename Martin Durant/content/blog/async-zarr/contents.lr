@@ -88,3 +88,5 @@ story stabilises.
 However, my code is usable right now, and might well be useful in non-browser
 async situations too. If we manage to figure out the API ad decent testing regime,
 this package will be published and maybe upstreamed into zarr-python itself.
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>

@@ -156,6 +156,10 @@ which has now begun. I strongly prefer this to writing kernels in C-land, I real
 want to do my development in python if I can.
 If awkward-array were to become the way to compile arbitrary python functions to process
 lists-of-strings in a parquet column, for example, all the better.
+
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 pub_date: 2019-01-05
 ---

@@ -42,5 +42,8 @@ However, there is no reason that this should be the only GUI for Intake. Come on
 Probably the rapidly developing [panel](https://panel.pyviz.org/user_guide/Widgets.html) library will be able to produce a similarly flexible interface which can be run within or without a notebook, and integrates more naturally with bokeh tabular and graphical output.
 
 **Summary**: working with jupyter-widgets was remarkably smooth and easy, and I got to a useful, functional interface far faster than I had thought it would take.
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+
 ---
 _discoverable: yes

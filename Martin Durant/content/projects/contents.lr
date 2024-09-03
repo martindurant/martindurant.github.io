@@ -4,6 +4,7 @@ body:
 
 Some software I am involved in:
 
+- [akimbo](https://akimbo.readthedocs.io/en/latest/):  analysis of nested, non-tabular data in dataframe workflows
 - [Intake](https://intake.readthedocs.io): a broad library for data ingest and cataloguing
 - [fsspec](https://filesystem-spec.readthedocs.io/en/latest/?badge=latest): unifying python file-system interfaces
 - [fastparquet](http://fastparquet.readthedocs.org) : a python library for efficient, fast tabular data storage and retrieval
@@ -23,3 +24,5 @@ Group affiliations
 - pangeo-forge
 - conda-forge
 - software and data carpentry
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
