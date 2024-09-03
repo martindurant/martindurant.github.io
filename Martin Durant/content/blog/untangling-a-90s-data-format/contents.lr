@@ -52,7 +52,7 @@ Some interesting facets of HDF4:
 - some of the items are "extended", which means that the offset/length points to another item
   _not_ listed in the central index. It contains a "special" identifier, and, depending on
   that type, links to either a linked list or to a chunk manifest
-    - for the linked list variant, you need to follow data items, each sating if it is the last,
+    - for the linked list variant, you need to follow data items, each stating if it is the last,
       and giving a pointer to the data; the data is the concatenation of the data sections.
     - chunk manifests are stored as tables: the special item links to a table description which
       gives the number of rows and the number of dimension columns; a corresponding data item
@@ -71,4 +71,7 @@ Conclusion
 
 Well, it turns out that the chunks, in at least the data I've seen, are tiny. That means that
 kerchunking thousands of files might be problematic. However, having some considerable work,
-maybe what I have will be useful to some people. 
+maybe what I have will be useful to some people.
+
+<script data-goatcounter="https://md-blog.goatcounter.com/count"
+ async src="//gc.zgo.at/count.js"></script>
