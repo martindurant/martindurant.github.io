@@ -1,0 +1,175 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Release: akimbo; use cases wanted — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Release: akimbo; use cases wanted</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2024-10-31
+  </p>
+  <p>Help, my data doesn't fit into my dataframe!</p>
+<p><strong>TL;DR: Check out <a href="https://akimbo.readthedocs.io/en/latest/">Akimbo</a> and
+give it a go, let me know what you think!</strong></p>
+<p><img src="../../img/akimbo.png" alt="logo" width="300"/></p>
+<p>(logo is not official)</p>
+<h2>Introduction</h2>
+<p>Tables and dataframes are everywhere. If you start any course about data (-engineering,
+-science, -analysis, ...), it's almost all exclusively devoted to them, whether
+in the common <code>pandas</code> form (and MANY friends) to begin with (e.g., from CSV files) or normalised
+to tabular form as the first step (e.g., see the ingestion tool <code>dbt</code>).</p>
+<p>If you really have nested records-in-records and variable-length lists - "generalised JSON" -
+then in python, you end up either with a big for-loop, or
+<a href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.explode.html">explode out</a>
+your data to fit the table model. The first of these solutions creates python objects at
+every stage and so is way too slow for non-trivial data sized. The second solution does
+allow for fast vectorised processing, but literally explodes memory use and looses the
+structure inherent in the original data.</p>
+<p>However, parquet and arrow support the full complexity of nested data, and arrow backs
+your dataframes (optional in <code>pandas</code>, but, in practice, taking over). So all we lack,
+is a convenient API to act on nested data in a sensible, understandable way.</p>
+<h2>Enter Akimbo</h2>
+<p>So now you can use <code>akimbo</code> from your favourite dataframe library. If you already have
+nested data (e.g., in parquet or JSON format) which you previously had to flatten/explode or
+process iteratively, you can try <code>akimbo</code>.
+Or maybe you were put off from even trying to
+handle such data, see the list of possible sources, below.</p>
+<p>Currently we support pandas, polars, cudf
+and dask.dataframe, with integrations with pyspark and daft in preliminary stages.</p>
+<p>I won't repeat what the documentation says, but encourage people to try it out and share thoughts.
+These are early days, and we have the chance to bring nested vectorised compute in python
+to a wide list of dataframe</p>
+<h2>Possible sources of interesting data</h2>
+<p><code>Akimbo</code> is not just for science!</p>
+<p>Here are some broad categories and a few more specific examples of where I expect to
+find interesting data. However, I probably have a blinkered view here! This is why
+<code>akimbo</code> wants you to get involved and share your ideas and suggestions.</p>
+<p><strong>DB tables with relationships</strong></p>
+<p>In cases Where you might think about your data as an ORM structure (i.e., records have
+children, whose details come from other tables). If these include variable-length
+relationships (one-to-many), and a large enough number of records that python loops
+would get slow, and compute processes that are hard to phrase is SQL, or if the "tables"
+are in separate datasets without a DB engine.</p>
+<p>Simply reading the whole merged table ("exploded view") is likely much slower in
+transfer, memory use and processing speed, and this is the point. In fact, if you
+already have an exploded table, using groupby to form it back into lists-of-structs
+may well be worthwhile for the storage and memory savings.</p>
+<p><strong>Sensor Data</strong></p>
+<p>Real physical devices generally do not produce tabular data. They may have time-series
+(one-dimensional variable-length) readings or even deeper structured output. Within
+computer hardware, or real physical sensors or any IoT device, there is a huge amount
+of such data around.</p>
+<p><strong>Server logs</strong></p>
+<p>Servers generally output some text for all the connections they receive, or possibly formatted
+line-delimited JSON/XML. In the common case, these logs can be broken down into types or
+connection and probably "sessions", which join with known user information. These
+are all record-oriented data types, and the sessions naturally have variable number of
+entries. Furthermore, common data types like IP addresses need to be parsed and operated
+on in type-specific ways.</p>
+<p><strong>Timeseries, e.g., finance</strong></p>
+<p>Business problems are full of time-series data. One well-studied instance of this is finance,
+where (for example) stocks are bid on at various exchanges as a function of time. A variable
+number of bids are received per exchange and per stock symbol, and each bid contains various
+extra fields (origin, price, quantity). It is very common to flatten this data for the
+purposes of graphing (min/max per time bin, for example), but that looses the detail of the
+data, which should be important for training real-time systems.</p>
+<p><strong>Science</strong></p>
+<p>The original inspiration for <code>awkward-array</code> was the field of high-energy physics: each
+particle collision gives rise to a cascade of variable numbers of different particle types, each
+of which have different measuable characteristics. Each "row" (or event) is a node with a large
+tree of descendent objects, therefore, and something that fits very naturally into the
+arrow-like data structure that <code>akimbo</code> is concerned with. However, they are <em>not</em> normally
+analysed using dataframe tools, since very specific analysis workflows are built directly
+on <code>awkward</code> (and <a href="https://dask-awkward.readthedocs.io/en/stable/"><code>dask-awkward</code></a>).</p>
+<p>Another approach to nested data in dataframes can be found with
+<a href="https://nested-pandas.readthedocs.io/en/latest/">nested-pandas</a>, built for analysing
+time series of astronomical measurements. In this case, this is a
+cross-match/join way to build the data structure, one level deep, but each sub-structure is
+in fact a potentially quite large time-series of measurements. The difference here, is that
+the child timeseries dataframes are big enough, that looping over them does not add
+significant overhead. We are hoping to prove that <code>akimbo</code> can do everything that
+the more specialised <code>nested-pandas</code> can do, without worse performance. This is a work
+in progress.</p>
+<h2>Future Work</h2>
+<ul>
+<li><p>Making great use-case examples (please help!).</p>
+</li>
+<li><p>Solidifying cuDF integration (since it doesn't use real arrow structures or kernels).</p>
+</li>
+<li><p>Working in geo datatypes (polygons, points) and simpler algorithms, perhaps the
+set of numba functions in
+<a href="https://github.com/holoviz/spatialpandas/blob/main/spatialpandas/geometry/_algorithms/measures.py">spatialpandas</a>
+which are already numba ready, or those from
+<a href="https://geoarrow.org/geoarrow-rs/python/latest/api/compute/functions/">geoarrow-rust</a>.</p>
+</li>
+<li><p>other specialised data types beyond the POC <a href="https://github.com/intake/akimbo-ip">ip integration</a>
+and physics-specific vector objects?</p>
+</li>
+<li><p>daft and pyspark integration (some <a href="https://github.com/intake/akimbo/pull/81">experimental work</a>
+has been started)</p>
+</li>
+<li><p>interoperability with graph/sparse libraries?</p>
+</li>
+<li><p>other file formats like XML? We can already integrate any that the arrow ecosystem supports
+(feather, lance, delta/berg, etc.)</p>
+</li>
+</ul>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2024 by Martin Durant.
+  </footer>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
+</script>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
