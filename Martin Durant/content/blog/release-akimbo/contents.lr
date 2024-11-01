@@ -47,7 +47,7 @@ and dask.dataframe, with integrations with pyspark and daft in preliminary stage
 
 I won't repeat what the documentation says, but encourage people to try it out and share thoughts.
 These are early days, and we have the chance to bring nested vectorised compute in python
-to a wide list of dataframe
+to a wide list of dataframe workflows.
 
 Possible sources of interesting data
 ------------------------------------
