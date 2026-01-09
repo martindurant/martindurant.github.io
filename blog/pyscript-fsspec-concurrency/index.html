@@ -1,0 +1,139 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>pyscript fsspec concurrency! — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>pyscript fsspec concurrency!</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2026-01-09
+  </p>
+  <h2>TD;DR</h2>
+<p>Following a long collaboration with my colleagues in the PyScript group and
+connecting together a deep stack of technologies, PyData workflows in a browser
+are now possible with full partial loading of data and concurrency. Here is an image
+of loading 1 year's worth of conda package download data from several parquet
+files in about 6s in my browser.</p>
+<p><img src="net_graph.png" alt="network graph"></p>
+<h3>Introduction - the problem</h3>
+<p>Anaconda has historically catered particularly to data oriented python practitioners; just
+see the list of packages listed at <a href="https://www.anaconda.com/open-source">https://www.anaconda.com/open-source</a> . This is no surprise,
+given that Anaconda's founders created scipy and numpy, just the kind of software
+that proved difficult to install on a wide variety of hardware and OS.</p>
+<p>However, python is used for so much more! In particular, the learning and web-dev spheres
+were not particularly in scope. With the emergence of <a href="https://pyscript.net/">PyScript</a>,
+acquisition of <a href="https://edublocks.org/">edublocks</a> and sponsorship of <a href="https://beeware.org/">beeware</a>,
+there is now more of a conscious effort to cater to the "99%", people who only need a little
+programming and don't need heavy-duty installation and IDEs.</p>
+<p>Turning to PyScript in particular, it allows for python coding alongside browser
+front-end code for easy interaction in a browser, without any python installation at all.
+The browser is the sandbox. BUT: these people are not doing PyData workloads, they are
+a completely different community. However, data now powers so much of python (and the
+world), that we need to at least allow for cross-over, for PyData to be accessible
+in a browser.</p>
+<p>However, popular packages such as <code>pandas</code> make a bunch of assumptions about the
+system they are running on, particularly for loading from remote data (and in a
+browser, <em>everything</em> is remote).</p>
+<h3>The Stack</h3>
+<p>There are many pieces of technology involved in getting data into a usable format.
+In the example here, the following are important:</p>
+<ul>
+<li>parquet, a file format for tabular data designed to be "cloud native", meaning you can
+find the metadata (fields, types) in a known location and only read those columns and
+parts of the data you need</li>
+<li>fsspec, a python library for fetching bytes from many different sources, including
+local files, http and cloud storage providers</li>
+<li>pyodide: a python interpreter that can run in a browser</li>
+<li>fastparquet, a python library for reading parquet files. Pyarrow is also available and
+more performant fo many datasets, but less readily usable under pyodide (if at all)</li>
+<li>pandas, the most widely-used table library in python. It uses fsspec to load data
+from remote locations.</li>
+</ul>
+<p>In this blog, I will show you how I glued them all together!</p>
+<h3>async??? CORS???</h3>
+<p>Running python in a browser imposes conditions.</p>
+<ul>
+<li>The only communication with
+the outside world is via HTTP mediated by the browser itself. That means, that no
+python library depending on low-level network APIs (e.g., urllib) will work.</li>
+<li>Threads and asyncio don't work, so there cannot be normal parallelism or concurrency.
+Indeed, concurrency in pydata is always hard, because packages like pandas make
+synchronous calls to the IO layer, but fsspec goes to great lengths to be internally async
+and certain operations are fully concurrent.</li>
+<li>the auth model for connecting to remote servers is fundamentally different from normal python;
+the browser assumes user-mediated flows with cookies, but a library like botorore (for
+AWS) uses tokens and secrets. Furthermore, even when data is exposed via public URLs,
+the browser will not allow cross-origin requests unless the server explicitly allows it.</li>
+</ul>
+<h3>The case study</h3>
+<ul>
+<li>the old <a href="https://github.com/conda-incubator/condastats">https://github.com/conda-incubator/condastats</a> project (and Intake mention?)</li>
+<li>the pyscript previous POC (link???) and time baseline limit. Also mention pypi's 120day limit.</li>
+</ul>
+<h3>The work</h3>
+<ul>
+<li>fsspec-proxy</li>
+<li>pyscript-fsspec-client</li>
+<li>the worker/main split</li>
+<li>fsspec.parquet: multi-file and passing filters</li>
+<li>rewriting the parquet files</li>
+</ul>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2024 by Martin Durant.
+  </footer>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
+</script>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
