@@ -49,7 +49,7 @@
     
     on 2026-01-09
   </p>
-  <h2>TD;DR</h2>
+  <h2>Summary</h2>
 <p>Following a long collaboration with my colleagues in the PyScript group and
 connecting together a deep stack of technologies, PyData workflows in a browser
 are now possible with full partial loading of data and concurrency. Here is an image
@@ -87,8 +87,13 @@ local files, http and cloud storage providers</li>
 <li>pyodide: a python interpreter that can run in a browser</li>
 <li>fastparquet, a python library for reading parquet files. Pyarrow is also available and
 more performant fo many datasets, but less readily usable under pyodide (if at all)</li>
-<li>pandas, the most widely-used table library in python. It uses fsspec to load data
-from remote locations.</li>
+<li><p>pandas, the most widely-used table library in python. It uses fsspec to load data
+from remote locations.</p>
+<p><img src="https://www.jumpingrivers.com/blog/parquet-file-format-big-data-r/parquet-logo.png" alt="parquet" width="20%" height="auto">
+  <img src="https://avatars.githubusercontent.com/u/92825505?s=400&u=81c0860bcc4b8705b8cff909835f5757d5b29952&v=4" alt="fsspec" width="20%" height="auto">
+  <img src="https://avatars.githubusercontent.com/u/100553281?s=280&v=4" alt="pyscript" width="20%" height="auto">
+  <img src="https://img.icons8.com/color/1200/pandas.jpg" alt="pandas" width="20%" height="auto"></p>
+</li>
 </ul>
 <p>In this blog, I will show you how I glued them all together!</p>
 <h3>async??? CORS???</h3>
