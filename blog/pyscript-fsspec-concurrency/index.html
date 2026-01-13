@@ -97,15 +97,16 @@ from remote locations.</p>
 </ul>
 <p>In this blog, I will show you how I glued them all together!</p>
 <h3>async??? CORS???</h3>
-<p>Running python in a browser imposes conditions.</p>
+<p>Running python in a browser imposes the following tricky conditions.</p>
 <ul>
 <li>The only communication with
 the outside world is via HTTP mediated by the browser itself. That means, that no
 python library depending on low-level network APIs (e.g., urllib) will work.</li>
-<li>Threads and asyncio don't work, so there cannot be normal parallelism or concurrency.
+<li>Threads and normal asyncio don't work, so there cannot be normal parallelism or concurrency.
 Indeed, concurrency in pydata is always hard, because packages like pandas make
 synchronous calls to the IO layer, but fsspec goes to great lengths to be internally async
 and certain operations are fully concurrent.</li>
+<li>blocking calls can only be made from workers.</li>
 <li>the auth model for connecting to remote servers is fundamentally different from normal python;
 the browser assumes user-mediated flows with cookies, but a library like botorore (for
 AWS) uses tokens and secrets. Furthermore, even when data is exposed via public URLs,
@@ -117,10 +118,20 @@ the browser will not allow cross-origin requests unless the server explicitly al
 <li>the pyscript previous POC (link???) and time baseline limit. Also mention pypi's 120day limit.</li>
 </ul>
 <h3>The work</h3>
+<p>This was a big effort just to make one graph! The final results can be found at
+<a href="https://github.com/fsspec/fsspec-proxy">https://github.com/fsspec/fsspec-proxy</a> , with subdirectories:</p>
 <ul>
-<li>fsspec-proxy</li>
-<li>pyscript-fsspec-client</li>
-<li>the worker/main split</li>
+<li>fsspec-proxy, a local bytes server which uses fsspec to read from remote, and provides
+a CORS-enables API to read from</li>
+<li>pyscript-fsspec-client, an fsspec implementation which can be used from pyscript workers
+and async IO module which reads bytes via the broswer's fetch API.</li>
+<li>an example of this in use, the code for main/worker which generated the graph. main.py runs
+in the browser main process, and calls worker.py in a worker process; it also sets up the
+async IO module. server.py is a convenient way to server the files locally to the browser
+(it adds header flags to SimpleHttpServer to allow buffer passing).</li>
+</ul>
+<p>Work in other repos:</p>
+<ul>
 <li>fsspec.parquet: multi-file and passing filters</li>
 <li>rewriting the parquet files</li>
 </ul>
