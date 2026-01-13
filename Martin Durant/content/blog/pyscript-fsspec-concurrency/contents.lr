@@ -55,6 +55,12 @@ In the example here, the following are important:
 - pandas, the most widely-used table library in python. It uses fsspec to load data
   from remote locations.
 
+    <img src="https://www.jumpingrivers.com/blog/parquet-file-format-big-data-r/parquet-logo.png" alt="parquet" width="20%" height="auto">
+    <img src="https://avatars.githubusercontent.com/u/92825505?s=400&u=81c0860bcc4b8705b8cff909835f5757d5b29952&v=4" alt="fsspec" width="20%" height="auto">
+    <img src="https://avatars.githubusercontent.com/u/100553281?s=280&v=4" alt="pyscript" width="20%" height="auto">
+    <img src="https://img.icons8.com/color/1200/pandas.jpg" alt="pandas" width="20%" height="auto">
+
+
 In this blog, I will show you how I glued them all together!
 
 ### async??? CORS???
