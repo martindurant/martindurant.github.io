@@ -86,9 +86,18 @@ Running python in a browser imposes the following tricky conditions.
 
 ### The work
 
-- fsspec-proxy
-- pyscript-fsspec-client
-- the worker/main split
+This was a big effort just to make one graph! The final results can be found at
+https://github.com/fsspec/fsspec-proxy , with subdirectories:
+- fsspec-proxy, a local bytes server which uses fsspec to read from remote, and provides
+  a CORS-enables API to read from
+- pyscript-fsspec-client, an fsspec implementation which can be used from pyscript workers
+  and async IO module which reads bytes via the broswer's fetch API.
+- an example of this in use, the code for main/worker which generated the graph. main.py runs
+  in the browser main process, and calls worker.py in a worker process; it also sets up the
+  async IO module. server.py is a convenient way to server the files locally to the browser
+  (it adds header flags to SimpleHttpServer to allow buffer passing).
+
+Work in other repos:
 - fsspec.parquet: multi-file and passing filters
 - rewriting the parquet files
 
