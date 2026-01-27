@@ -113,28 +113,47 @@ AWS) uses tokens and secrets. Furthermore, even when data is exposed via public 
 the browser will not allow cross-origin requests unless the server explicitly allows it.</li>
 </ul>
 <h3>The case study</h3>
-<ul>
-<li>the old <a href="https://github.com/conda-incubator/condastats">https://github.com/conda-incubator/condastats</a> project (and Intake mention?)</li>
-<li>the pyscript previous POC (link???) and time baseline limit. Also mention pypi's 120day limit.</li>
-</ul>
+<p><code>conda</code> packages are hosted by Anaconda, and package download stats have been accumulated
+in parquet files for several years. Access to these have been provided for some time
+via an <a href="https://github.com/anaconda/anaconda-package-data"><code>intake</code> catalogue</a> and
+the <a href="https://github.com/conda-incubator/condastats">condastats</a> CLI tool.</p>
+<p>As a forerunner of the work here, a <code>pyscript</code> app exists which does indeed load parquet
+data (the same as above) into a browser page with pure python and a proxy hosted by
+pyscript.com: <a href="https://philippjfr-gh.pyscriptapps.com/anaconda-stats/latest/">app</a>. The
+frontend was written by Philipp Rudiger. Note how long it takes to load just 30 days of
+data for a given package (if it completes at all). The maximum lookback foreseen was 90 days.</p>
+<p>Also worth mentioning in this space, PyPI collects download stats, as surfaced by,
+e.g., <a href="https://pypistats.org/">https://pypistats.org/</a> ; but they also have an upper limit on lookback time, in
+this case 120 days.</p>
 <h3>The work</h3>
-<p>This was a big effort just to make one graph! The final results can be found at
+<p>This was a big effort just to make one graph! Although this is all POC righ now and might not
+be used by many, I am proud to have made it this far.</p>
+<p>The final results can be found as code at
 <a href="https://github.com/fsspec/fsspec-proxy">https://github.com/fsspec/fsspec-proxy</a> , with subdirectories:</p>
 <ul>
 <li>fsspec-proxy, a local bytes server which uses fsspec to read from remote, and provides
-a CORS-enables API to read from</li>
+a CORS-friendly API to read from. This gets routes all data calls through standard HTTP,
+and pushes auth to the proxy, if needed. The conda data happens to be public.</li>
 <li>pyscript-fsspec-client, an fsspec implementation which can be used from pyscript workers
-and async IO module which reads bytes via the broswer's fetch API.</li>
-<li>an example of this in use, the code for main/worker which generated the graph. main.py runs
-in the browser main process, and calls worker.py in a worker process; it also sets up the
+and async IO module which reads bytes via the browser's fetch API.</li>
+<li>an example/ folder, with all this in use, the specific workflow that made the graph. main.py runs
+in the browser main process, and calls worker.py in a web-worker; it also sets up the
 async IO module. server.py is a convenient way to server the files locally to the browser
 (it adds header flags to SimpleHttpServer to allow buffer passing).</li>
 </ul>
-<p>Work in other repos:</p>
+<p>Additionally, I work was required in the following areas:</p>
 <ul>
-<li>fsspec.parquet: multi-file and passing filters</li>
-<li>rewriting the parquet files</li>
+<li>fsspec.parquet: a module to find the byte ranges needed to read given row-groups and columns
+from parquet files. The additions allowed for multiple files in a single call (so that their
+metadata and byte-ranges could be read concurrently) and applying filters to the data to
+select only necessary row-groups.</li>
+<li>the parquet files were rewritten by colleagues at Anaconda, to produce fewer, bigger files,
+but with row-groups split on package name to better allow selective loading. This change
+alone would have improved the timing of the original stats dashboards somewhat.</li>
 </ul>
+<p>So you see, many pieces! However, the whole thing does work, and full 6x concurrency
+was achieved in Chrome. I think this saturated my bandwidth, but I don't know how
+you would increase the number of connections the browser makes anyway.</p>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
   </div>
 
