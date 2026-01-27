@@ -81,25 +81,51 @@ Running python in a browser imposes the following tricky conditions.
 
 ### The case study
 
-- the old https://github.com/conda-incubator/condastats project (and Intake mention?)
-- the pyscript previous POC (link???) and time baseline limit. Also mention pypi's 120day limit.
+`conda` packages are hosted by Anaconda, and package download stats have been accumulated
+in parquet files for several years. Access to these have been provided for some time
+via an [`intake` catalogue](https://github.com/anaconda/anaconda-package-data) and
+the [condastats](https://github.com/conda-incubator/condastats) CLI tool.
+
+As a forerunner of the work here, a `pyscript` app exists which does indeed load parquet
+data (the same as above) into a browser page with pure python and a proxy hosted by
+pyscript.com: [app](https://philippjfr-gh.pyscriptapps.com/anaconda-stats/latest/). The
+frontend was written by Philipp Rudiger. Note how long it takes to load just 30 days of
+data for a given package (if it completes at all). The maximum lookback foreseen was 90 days.
+
+Also worth mentioning in this space, PyPI collects download stats, as surfaced by,
+e.g., https://pypistats.org/ ; but they also have an upper limit on lookback time, in
+this case 120 days.
 
 ### The work
 
-This was a big effort just to make one graph! The final results can be found at
+This was a big effort just to make one graph! Although this is all POC righ now and might not
+be used by many, I am proud to have made it this far.
+
+The final results can be found as code at
 https://github.com/fsspec/fsspec-proxy , with subdirectories:
 - fsspec-proxy, a local bytes server which uses fsspec to read from remote, and provides
-  a CORS-enables API to read from
+  a CORS-friendly API to read from. This gets routes all data calls through standard HTTP,
+  and pushes auth to the proxy, if needed. The conda data happens to be public.
 - pyscript-fsspec-client, an fsspec implementation which can be used from pyscript workers
-  and async IO module which reads bytes via the broswer's fetch API.
-- an example of this in use, the code for main/worker which generated the graph. main.py runs
-  in the browser main process, and calls worker.py in a worker process; it also sets up the
+  and async IO module which reads bytes via the browser's fetch API.
+- an example/ folder, with all this in use, the specific workflow that made the graph. main.py runs
+  in the browser main process, and calls worker.py in a web-worker; it also sets up the
   async IO module. server.py is a convenient way to server the files locally to the browser
   (it adds header flags to SimpleHttpServer to allow buffer passing).
 
-Work in other repos:
-- fsspec.parquet: multi-file and passing filters
-- rewriting the parquet files
+Additionally, I work was required in the following areas:
+
+- fsspec.parquet: a module to find the byte ranges needed to read given row-groups and columns
+  from parquet files. The additions allowed for multiple files in a single call (so that their
+  metadata and byte-ranges could be read concurrently) and applying filters to the data to
+  select only necessary row-groups.
+- the parquet files were rewritten by colleagues at Anaconda, to produce fewer, bigger files,
+  but with row-groups split on package name to better allow selective loading. This change
+  alone would have improved the timing of the original stats dashboards somewhat.
+
+So you see, many pieces! However, the whole thing does work, and full 6x concurrency
+was achieved in Chrome. I think this saturated my bandwidth, but I don't know how
+you would increase the number of connections the browser makes anyway.
 
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
 
