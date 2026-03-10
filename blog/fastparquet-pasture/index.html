@@ -114,7 +114,7 @@ these are compiled-language first, with python APIs on top. Pandas, by contrast,
 in python/cython, and so not easily callable from rust/c++. There have also been several
 trimmed down arrow and parquet implementations.</p>
 <h2>Thoughts of possibilities</h2>
-<p>So now <code>pyarrow</code> does everythong we need, Pandas depends on it, and the reason for
+<p>So now <code>pyarrow</code> does everything we need, Pandas depends on it, and the reason for
 <code>fastparquet</code> to continue to exist has gone away. The only plausible niche I still saw,
 was in wasm applications (i.e., the browser), since deploying pyarrow has proven stubbornly
 difficult, but now apparently successful 
