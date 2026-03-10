@@ -83,7 +83,7 @@ trimmed down arrow and parquet implementations.
 
 ## Thoughts of possibilities
 
-So now ``pyarrow`` does everythong we need, Pandas depends on it, and the reason for
+So now ``pyarrow`` does everything we need, Pandas depends on it, and the reason for
 ``fastparquet`` to continue to exist has gone away. The only plausible niche I still saw,
 was in wasm applications (i.e., the browser), since deploying pyarrow has proven stubbornly
 difficult, but now apparently successful 
