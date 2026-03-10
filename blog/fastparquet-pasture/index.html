@@ -49,26 +49,28 @@
     
     on 2026-03-10
   </p>
-  <p><strong>TL;DR</strong>: <code>fastparquet</code> is one of my major contiributions to the pydata ecosystem.
+  <p><strong>TL;DR</strong>: <code>fastparquet</code> is one of my major contibutions to the pydata ecosystem.
 After about a decade of use, <code>fastparquet</code> is no longer being developed,
 and being retired ("put out to pasture"). Parquet functionality in Pandas is
 to be covered solely by the <code>pyarrow</code> package. This is a recap of the project.</p>
 <h2>Origins of fastparquet</h2>
-<p>When I started at Anaconda, <a href="https://hadoop.apache.org/"><code>Hadoop</code></a> was still new and exciting. For those that
+<p>When I started at Anaconda, <a href="https://hadoop.apache.org/"><code>Hadoop</code></a> was still new and exciting. 
+For those that
 remember, it was a distributed computing platform very commonly used in enterprise
 workloads for map-reduce style processing.</p>
-<p>The projects <code>dask</code> was (solely) supported by Anaconda at the time, and wished to
+<p>The project <code>dask</code> was (solely) supported by Anaconda at the time, and wished to
 compete with Apaches Hadoop and Spark (the latter of which often ran on Hadoop clusters),
 particularly for dataframes. Since Pandas had already established itself as the dataframe
 library of choice in python — there were no contenders like polars or duckDB — and
 parquet was fast becoming the dominant tabular file format, <code>dask</code> needed a way to
 interface with both parquet files and HDFS storage. These two tasks fell to me.</p>
-<p>Fortunately, <a href="https://github.com/jcrobak/parquet-python"><code>parquet-python</code></a> already existed, which demonstrated some of the nitty
+<p>Fortunately, <a href="https://github.com/jcrobak/parquet-python"><code>parquet-python</code></a> already existed, 
+which demonstrated some of the nitty
 gritty byte-twidling required to decode the thrift structures and encoded data pages,
 and <code>fastparquet</code> still maintains the forked history. However, speed was esssential
 for the "big data" we wanted to target, so the first task was to port the algortithms
 to use <code>numpy</code>, which would readily be provided to <code>pandas</code>, and to move
-as much of the decoding logic to <code>cython</code>.</p>
+as much of the decoding logic as possible to <code>cython</code>.</p>
 <p>Amusingly (to some), I was asked to wait for the <code>pyarrow</code> project to implement
 parquet support, but when no progress on this was apparent, and <code>dask</code>'s needs
 were pressing, I went ahead with my release.</p>
@@ -92,7 +94,7 @@ pages, and new encodings, new time types etc. Eventually I even ended up impleme
 complete rewrite of the thrift parser in<code>cython</code>.</p>
 <h2>arrow catches up</h2>
 <p>A note on the arrow project: it is, fundamentally, an in-memory data format; but also
-a monolith of functionality around this (multiple file formats, compute, remote compute,
+a monolith of functionality around this (multiple file formats, compute, remote functions,
 shared memory...). Parquet IO was only a small part of their plans,
 and that's why it took a long time for performance to catch up to the dedicated scope
 of <code>fastparquet</code>. That also has allowed a niche for <code>fastparquet</code> in more recent times,
@@ -108,7 +110,7 @@ installed anyway.</p>
 <p>So, in even more recent times, other arrow-based dataframe/table
 libraries (especially <a href="https://docs.pola.rs/"><code>polars</code></a> and <a href="https://www.duckdb.org/"><code>duckDB</code></a>) 
 have become prevalent, and, interestingly,
-these are compiled-language first, with python APIs. Pandas, by contrast, was written
+these are compiled-language first, with python APIs on top. Pandas, by contrast, was written
 in python/cython, and so not easily callable from rust/c++. There have also been several
 trimmed down arrow and parquet implementations.</p>
 <h2>Thoughts of possibilities</h2>
