@@ -1,0 +1,111 @@
+title: fastparquet put out to pasture
+---
+body:
+
+
+**TL;DR**: ``fastparquet`` is one of my major contiributions to the pydata ecosystem.
+After about a decade of use, ``fastparquet`` is no longer being developed,
+and being retired ("put out to pasture"). Parquet functionality in Pandas is
+to be covered solely by the ``pyarrow`` package. This is a recap of the project.
+
+## Origins of fastparquet
+
+When I started at Anaconda, [``Hadoop``](https://hadoop.apache.org/) was still new and exciting. For those that
+remember, it was a distributed computing platform very commonly used in enterprise
+workloads for map-reduce style processing.
+
+The projects ``dask`` was (solely) supported by Anaconda at the time, and wished to
+compete with Apaches Hadoop and Spark (the latter of which often ran on Hadoop clusters),
+particularly for dataframes. Since Pandas had already established itself as the dataframe
+library of choice in python — there were no contenders like polars or duckDB — and
+parquet was fast becoming the dominant tabular file format, ``dask`` needed a way to
+interface with both parquet files and HDFS storage. These two tasks fell to me.
+
+Fortunately, [``parquet-python``](https://github.com/jcrobak/parquet-python) already existed, which demonstrated some of the nitty
+gritty byte-twidling required to decode the thrift structures and encoded data pages,
+and ``fastparquet`` still maintains the forked history. However, speed was esssential
+for the "big data" we wanted to target, so the first task was to port the algortithms
+to use ``numpy``, which would readily be provided to ``pandas``, and to move
+as much of the decoding logic to ``cython``.
+
+Amusingly (to some), I was asked to wait for the ``pyarrow`` project to implement
+parquet support, but when no progress on this was apparent, and ``dask``'s needs
+were pressing, I went ahead with my release.
+
+## Success years
+
+It worked great! Fastparquet pioneered:
+- direct reading of remote files via fsspec integration
+- partitioned reading of multi-file sets (particularly useful for dask)
+- early filtering out of chunks by stats or directory naming conventions
+- only reading the byte ranges needed
+- efficient memory use by pre-allocating pandas storage
+- choice of codec and encoding at write time
+
+(plus a bunch of other things)
+
+What's more, ``fastparquet`` was genuinely _fast_, even compared to the C++ internals of
+``pyarrow``, when it finally arrived. This continued for several years, and was
+particularly true for categoricals (parquet allows for "dictionary" encoding, but that
+doesn't necessarily imply categoricals, since not all pages need to have the same encoding).
+
+During this time, ``fastparquet`` continued to be developed, such as adding support for "v2"
+pages, and new encodings, new time types etc. Eventually I even ended up implementing a
+complete rewrite of the thrift parser in``cython``.
+
+## arrow catches up
+
+A note on the arrow project: it is, fundamentally, an in-memory data format; but also
+a monolith of functionality around this (multiple file formats, compute, remote compute,
+shared memory...). Parquet IO was only a small part of their plans,
+and that's why it took a long time for performance to catch up to the dedicated scope
+of ``fastparquet``. That also has allowed a niche for ``fastparquet`` in more recent times,
+because the smaller install size lends itself to constrained platforms such as AWS Lambda.
+
+As ``pyarrow`` got better, Pandas also started to make better use of arrow-specific
+functionality, particularly the efficient (utf8) Strings representation. That was
+something that ``fastparquet`` would never support, since it makes no sense for
+``fastparquet`` to make direct use of ``arrow``, needing both to be installed.
+
+Interestingly, ``pyarrow`` became the default backend in ``pd.read_parquet()`` quite
+a long time ago, but ``dask`` took some time to follow suit, perhaps because my colleagues
+didn't want to seem to slight me. Of course, this didn't matter unless you had both
+installed anyway.
+
+So, in even more recent times, other arrow-based dataframe/table
+libraries (especially [``polars``](https://docs.pola.rs/) and [``duckDB``](https://www.duckdb.org/)) 
+have become prevalent, and, interestingly,
+these are compiled-language first, with python APIs. Pandas, by contrast, was written
+in python/cython, and so not easily callable from rust/c++. There have also been several
+trimmed down arrow and parquet implementations.
+
+## Thoughts of possibilities
+
+So now ``pyarrow`` does everythong we need, Pandas depends on it, and the reason for
+``fastparquet`` to continue to exist has gone away. The only plausible niche I still saw,
+was in wasm applications (i.e., the browser), since deploying pyarrow has proven stubbornly
+difficult, but now apparently successful 
+(see also [my previous post](https://martindurant.github.io/blog/pyscript-fsspec-concurrency/) 
+about parquet in the browser).
+
+One other possibility I briefly entertained, was to make ``fastparquet`` a pure parquet-numpy
+bridge, cutting out Pandas. That could have had a decent memory and performance bonus
+(see https://github.com/dask/fastparquet/pull/931 ), but there doesn't seem to be enough demand
+for me to justify the effort. Things may have been different, if there was more momentum
+behind the [``akimbo``](https://akimbo.readthedocs.io/en/latest/) project. Check it out, if
+you don't know what that is!
+
+Given my responsibilities, in particular to maintain ``fsspec`` and to develop ``projspec``,
+it's time to move on.
+
+Finally, let me say that I am *proud* of ``fastparquet``, both what it has achieved for
+the community, and the code itself required to make it go. It was hard and rewarding!
+
+---
+author: Martin Durant
+---
+pub_date: 2026-3-10
+---
+_hidden: no
+---
+_discoverable: yes
