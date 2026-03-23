@@ -1,0 +1,127 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>Am I coding in typescript? — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>Am I coding in typescript?</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2026-03-23
+  </p>
+  <p><strong>TL;DR</strong>: <code>projspec</code> is a useful tool, but one that best shows its worth within
+an IDE. While I have left creating a jupyter frontend to colleagues, I thought I'd
+have a go for VSCode with the aid of some bots I know. Here's what happened.</p>
+<p><img alt="logo" src="https://raw.githubusercontent.com/fsspec/projspec/refs/heads/main/logo-text.png" width="75"/></p>
+<h2><code>projspec</code>, briefly</h2>
+<p>This post in not about <code>projspec</code> as such, but, if you want to know, 
+<code>projspec</code>'s scope is dealing with the wide
+variety of project types that exist in the python ecosystem. A "project" in this sense
+is just a directory of files with some specific metadata to declare what the function
+of that stuff is. A project can be several different types at a time (e.g., <code>uv</code> for
+python environment, <code>git</code> for version control, <code>RTD</code> for documentation), and
+projspec allows you to introspect these details, "make" the various artifacts available
+and find your desired project out of a potentially large library.</p>
+<p>Here is the documentation: <a href="https://projspec.readthedocs.io/en/latest/">https://projspec.readthedocs.io/en/latest/</a></p>
+<h2>Why the frontend matters</h2>
+<p>These ideas were pretty well received, but of course I have worked first on the
+python library API and CLI before anything else. Yet, most of the functionality makes sense mostly
+in a development environment, an IDE. While my jupyter colleagues have been working on
+<a href="https://github.com/fsspec/jupyter-projspec">their frontend</a>, <code>vscode</code> is actually
+more popular, even for python. Furthermore, it is already project-oriented (i.e., 
+you open a new window for each project directory root), but has no library-of-projects
+concept beside the "open recent" tab.</p>
+<p>I am not a TypeScript dev, required for a vscode extension, but the API seems pretty
+sensible (<a href="https://github.com/microsoft/vscode-extension-samples/tree/main/tree-view-sample">sample</a> — 
+so long as I can craft the (python) CLI in a way to give reasonable JSON
+data back on calls.</p>
+<h2>What I did</h2>
+<p>Well, we've had a lot of conversations at Anaconda on what AI (LLMs) can and can't do, and
+this seemed like a perfect use case to me. The UI will not be complex, and the source of
+data is very well-defined (by me).</p>
+<p><img src="./lib.png" alt="screenshot" width="500"/></p>
+<p>So this was my first case of interacting with agentic codegen, via <code>opencode</code>, 
+Claude Sonnet 4 and AWS Bedrock (paid by the corp). 
+The setup involved some steps which were far from clear...
+Also, I ended up running everything in Docker as a sandbox, which ought to prevent
+the bot from accidentally sending emails or all of my credentials wherever it pleases.
+Call me paranoid.</p>
+<p>The short result is, that the process, essentially a "vibe", resulted in a usable 
+extension UI. It is included in the repo 
+<a href="https://github.com/fsspec/projspec/tree/main/vsextension">here</a>
+but will still need some real review before I release this in any way.</p>
+<p>(Aside:
+testing UIs is <em>hard</em>, whether in an app or webpage)</p>
+<p>(Aside: why is the bot such a sycophant?? "Great Idea!" it says, but is it? Is this
+how the internet of text sounds, or is this how we are doomed to eventually talk
+to each other too?)</p>
+<h2>Next: PyCharm??</h2>
+<p>I did also attempt the same for PyCharm, which requires extensions written in <code>kotlin</code>
+(I am even less familiar with this than TypeScript!). It turns out, that because most
+of the code for vscode was around formatting JSON data and building HTML views, there
+really was not much conversion required. The IDEA extension API is also very sane, and
+my single prompt to convert the code (given the github URL of a suitable template to start from)
+resulted in something that <em>looked</em> OK, although it certainly has functionality holes.
+Funnily, the bot decided to create a logo for me, an SVG "P" letter.</p>
+<p>In summary: there's potential here, and some forms of programming that I do really lend
+themselves to LLMs, especially as a first pass. But I need to learn the ways to use it.
+As others have noted, it then moves the bottlenecks to a) deciding what and how to make
+and b) making sure it's good.</p>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js"/>
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2024 by Martin Durant.
+  </footer>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
+</script>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
