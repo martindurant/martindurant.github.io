@@ -1,0 +1,116 @@
+title: fsspec Retrospective
+---
+body:
+
+This is a description of how ``fsspec`` came to be, why it is like it is, and
+how the journey has been for me. Consider it a 10-year gift. This follows a
+period of surprising activity in python remote storage, not least advances
+in [gcsfs rapid buckets](https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/).
+
+
+Origins
+-------
+
+When I arrived at Anaconda (formerly Continuum Analytics) in 2015, I started as an
+instructor and curriculum developer for data science, but it wasn't long before I
+started to work with the [`dask`](https://www.dask.org/) team 
+(almost all of which were colleagues at the time).
+
+This was the era of Hadoop and Spark, and `dask` wished to play in the same world,
+distributing jobs onto clusters of workers. That required two new features:
+packaging IO tasks so that they could be sent to workers, and they could access
+bytes in storage; and integration with the `parquet` tabular data storage format, as
+well as ways to deploy to AWS, YARN clusters and others.
+
+(The parquet library would become [`fastparquet`](https://github.com/dask/fastparquet),
+the pioneering and leading parquet library for python for several years. But that's
+another story. Similar story for other utilities like `knit`, `dask-yarn`, 
+`dask-gateway` and more.)
+
+The first non-standard storage of concern was Hadoop's own HDFS.
+Luckily, the C library [`libhdfs3`](https://github.com/erikmuttersbach/libhdfs3) had
+recently appeared, and over that year's holidays, three of us had an informal contest
+to see who could write the better python wrapper. My version was simple, using `ctypes`,
+versus a raw C python extension library and a cython one. `ctypes` had the advantage
+of not needing a compilation step, and the API being wrapped was simple enough to work
+well. [`hdfs3`](https://github.com/dask/hdfs3) was my first filesystem.
+
+Design
+------
+
+The initial code inside `dask.bytes` provided a uniform interface to different storage
+backends, so that the rest of `dask` could make use of them. Some important considerations
+- dispatch based on the protocol of a URL ("s3://" is not the same as "hdfs://")
+- serializable filesystems and file-like instances, so they could be distributed to
+`dask` workers
+- tokens for filesystem instances, so they could be cached/reused
+- transparent text mode and compression (e.g., to read .csv.gz files)
+- glob handling (e.g., to read file*.cav, for to write file1.csv, file2.csv from a series
+of tasks)
+- buffering of bytes for read and write in file instances
+- utilities for finding chunks of files, e.g., newline delimiters (this is the only
+functionality still left inside `dask.bytes`: 
+[link](https://github.com/dask/dask/blob/main/dask/bytes/core.py#L14)).
+
+I made the solo decision to roughly follow `posix` naming and conventions for the
+filesystem interface, since I thought this would be most familiar to other
+users and developers. It has caused a lot of friction through the years with
+backends that are fundamentally not structured that way, but we do the best we can. 
+
+The only plausible other library around at the time that did some of this was 
+[`pyfilesystem`](https://github.com/PyFilesystem/pyfilesystem2), aka `fs`. They were
+not amenable to consider some of `dasks`'s requirements such as serializability, 
+unfortunately.
+
+The final list of main features is at https://filesystem-spec.readthedocs.io/en/latest/features.html .
+
+Adoption
+--------
+
+Anaconda at the time was a lovely place to launch this idea. Not only did `dask` adopt the
+newly-born `fsspec` (of course, it was designed for it), but we had contributors to
+`pandas`, `xarray` and other important python/data libraries. Since there was really no other
+way to dispatch IO to different storage systems at the backend, but most libraries supported
+writing to a generic file-like object (i.e., one that matches the python builtin file type),
+it was simple to extend their various read/write functions to take general URLs and 
+call `fsspec`. Of course, I had a direct hand in `zarr` and `parquet` integration;
+I think it's fair to say that, together, we bootstrapped the "cloud native"
+era for python.
+
+From there, it was a fairly straight-forward process of adding features, more
+backends, and strengthening the code. Some of these new features ended up being
+more widely used than others! I think the hardest part throughout was probably
+the around caching of file listings.
+
+One major switch along the way, was implementing an `syncio`-based backend for 
+cloud storage (s3, gcs, azure, http). This produced an immense speedup for bulk operations
+(upload, download, copy, delete) on many small files; but this made very little 
+difference to calling code using the file-like interface, at least until we
+can upstream the [prefetcher](https://gcsfs.readthedocs.io/en/latest/prefetcher.html)
+from `gcsfs` to `fsspec`.
+
+Status
+------
+
+`fsspec` gets 700M downloads per month as of April 2026 
+(see [here](https://hugovk.dev/top-pypi-packages/)). The full set of known
+implementations are listed [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations) 
+(internal) and [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations)
+(external).
+
+We have institutional buy-in from Microsoft, Google, HuggingFace; many contributors have
+weighed in along the years, and the packages are depend on by a large number of other libraries.
+I think we can say, that `fsspec` does a thing well (or well enough), limits its scope
+to just that functionality, and provides a useful convenience to other developers. Some
+of the success surely is from time&place, 
+
+Thoughts
+--------
+
+Interested in my work? See the range of things [I work on](https://docs.google.com/document/d/1ZxEbh_S_vwEEbRCadfHXOGo7Rq_Ckk--p_T6sYNbdDw/edit?tab=t.0)
+in a public docs page.
+
+---
+author: Martin Durant
+---
+pub_date: 2026-05-12
