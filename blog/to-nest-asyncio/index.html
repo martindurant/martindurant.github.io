@@ -92,12 +92,12 @@ you need to launch coroutines on an <em>event loop</em>. The original code has o
 running in a dedicated thread, and a sync function something like the following.
 (note that <code>f()</code> does not execute anything, but produces a coroutine object. It depends on its
 closure to be able to see the function and arguments to run, and be able to pass results back).</p>
-<div class="hll"><pre><span></span><span class="k">def</span> <span class="nf">sync</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="hll"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">sync</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">e</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
     <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
     <span class="n">error</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">f</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">():</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -129,7 +129,7 @@ is itself async. Attempting to run it would produce "Event loop is already runni
 How can you have both? <a href="https://pypi.org/project/nest-asyncio/"><code>nest-asyncio</code></a> would
 make it work, but that patches a host of internal classes, so importing fsspec would
 affect all async code in the process. So instead I hacked:</p>
-<div class="hll"><pre><span></span><span class="k">def</span> <span class="nf">_run_until_done</span><span class="p">(</span><span class="n">coro</span><span class="p">):</span>
+<div class="hll"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_run_until_done</span><span class="p">(</span><span class="n">coro</span><span class="p">):</span>
     <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
     <span class="n">task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">current_task</span><span class="p">()</span>
     <span class="n">asyncio</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">_unregister_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
@@ -172,7 +172,7 @@ be fixed with some more work - but it was already somewhat broken, and works fin
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

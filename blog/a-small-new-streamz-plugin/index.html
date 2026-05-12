@@ -74,16 +74,16 @@ I just need a way to pass events between the UI thread, and the streamz thread.<
 <h2>Plugin</h2>
 <p>The <a href="https://github.com/martindurant/streamz-q/blob/main/streamz_q/plugin.py">plugin code</a>, 
 simplified, looks this.</p>
-<div class="hll"><pre><span></span><span class="k">class</span> <span class="nc">from_q</span><span class="p">(</span><span class="n">streamz</span><span class="o">.</span><span class="n">Source</span><span class="p">):</span>
+<div class="hll"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">from_q</span><span class="p">(</span><span class="n">streamz</span><span class="o">.</span><span class="n">Source</span><span class="p">):</span>
 
-        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">sleep_time</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">sleep_time</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            :param q: threading.Queue</span>
 <span class="sd">                Any items pushed into here will become streamz events</span>
 <span class="sd">            &quot;&quot;&quot;</span>
             <span class="o">...</span>
 
-         <span class="k">async</span> <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
              <span class="k">try</span><span class="p">:</span>
                  <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
                  <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">asynchronous</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -134,7 +134,7 @@ behaviour. Imagine streamz feeding River!</p>
 <p><em>EDIT</em></p>
 <p>With the new <code>ReactiveHTML</code> component in Panel, it will be possible to respond to arbitrary DOM events
 (thanks for the example, <a href="https://github.com/philippjfr">@philippjfr</a> )</p>
-<div class="hll"><pre><span></span><span class="k">class</span> <span class="nc">Image</span><span class="p">(</span><span class="n">ReactiveHTML</span><span class="p">):</span>
+<div class="hll"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Image</span><span class="p">(</span><span class="n">ReactiveHTML</span><span class="p">):</span>
     <span class="n">src</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">String</span><span class="p">()</span>
     <span class="n">_html</span> <span class="o">=</span> <span class="s1">&#39;&lt;img id=&quot;img&quot; src=&quot;$</span><span class="si">{src}</span><span class="s1">&quot;&gt;&lt;/img&gt;&#39;</span>
 
@@ -154,7 +154,7 @@ behaviour. Imagine streamz feeding River!</p>
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

@@ -1,0 +1,153 @@
+\<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../static/style.css">
+<title>fsspec Retrospective — Martin Durant</title>
+<body>
+  <header>
+    <h1>Martin Durant</h1>
+    <nav>
+      <nav navbar navbar-inverse navbar-fixed-top>
+      <div class="container">
+        <div class="navbar-header">
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class='nav navbar-nav'>
+        <li><a href="../../">Welcome</a></li>
+        
+          <li><a href="../../biography/">Bio</a></li>
+        
+          <li class="active"><a href="../">Blog</a></li>
+        
+          <li><a href="../../projects/">Projects</a></li>
+        
+          <li><a href="../../about/">About</a></li>
+        
+        </ul>
+    </div>
+	</div></div>
+    </nav>
+  </nav>
+  </header>
+  <div class="page">
+    
+  
+  <div class="blog-post">
+  
+    <h2>fsspec Retrospective</h2>
+  
+  <p class="meta">
+    written by
+    
+      Martin Durant
+    
+    on 2026-05-12
+  </p>
+  <p>This is a description of how <code>fsspec</code> came to be, why it is like it is, and
+how the journey has been for me. Consider it a 10-year gift. This follows a
+period of surprising activity in python remote storage, not least advances
+in <a href="https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/">gcsfs rapid buckets</a>.</p>
+<h2>Origins</h2>
+<p>When I arrived at Anaconda (formerly Continuum Analytics) in 2015, I started as an
+instructor and curriculum developer for data science, but it wasn't long before I
+started to work with the <a href="https://www.dask.org/"><code>dask</code></a> team 
+(almost all of which were colleagues at the time).</p>
+<p>This was the era of Hadoop and Spark, and <code>dask</code> wished to play in the same world,
+distributing jobs onto clusters of workers. That required two new features:
+packaging IO tasks so that they could be sent to workers, and they could access
+bytes in storage; and integration with the <code>parquet</code> tabular data storage format, as
+well as ways to deploy to AWS, YARN clusters and others.</p>
+<p>(The parquet library would become <a href="https://github.com/dask/fastparquet"><code>fastparquet</code></a>,
+the pioneering and leading parquet library for python for several years. But that's
+another story. Similar story for other utilities like <code>knit</code>, <code>dask-yarn</code>, 
+<code>dask-gateway</code> and more.)</p>
+<p>The first non-standard storage of concern was Hadoop's own HDFS.
+Luckily, the C library <a href="https://github.com/erikmuttersbach/libhdfs3"><code>libhdfs3</code></a> had
+recently appeared, and over that year's holidays, three of us had an informal contest
+to see who could write the better python wrapper. My version was simple, using <code>ctypes</code>,
+versus a raw C python extension library and a cython one. <code>ctypes</code> had the advantage
+of not needing a compilation step, and the API being wrapped was simple enough to work
+well. <a href="https://github.com/dask/hdfs3"><code>hdfs3</code></a> was my first filesystem.</p>
+<h2>Design</h2>
+<p>The initial code inside <code>dask.bytes</code> provided a uniform interface to different storage
+backends, so that the rest of <code>dask</code> could make use of them. Some important considerations</p>
+<ul>
+<li>dispatch based on the protocol of a URL ("s3://" is not the same as "hdfs://")</li>
+<li>serializable filesystems and file-like instances, so they could be distributed to
+<code>dask</code> workers</li>
+<li>tokens for filesystem instances, so they could be cached/reused</li>
+<li>transparent text mode and compression (e.g., to read .csv.gz files)</li>
+<li>glob handling (e.g., to read file*.cav, for to write file1.csv, file2.csv from a series
+of tasks)</li>
+<li>buffering of bytes for read and write in file instances</li>
+<li>utilities for finding chunks of files, e.g., newline delimiters (this is the only
+functionality still left inside <code>dask.bytes</code>: 
+<a href="https://github.com/dask/dask/blob/main/dask/bytes/core.py#L14">link</a>).</li>
+</ul>
+<p>I made the solo decision to roughly follow <code>posix</code> naming and conventions for the
+filesystem interface, since I thought this would be most familiar to other
+users and developers. It has caused a lot of friction through the years with
+backends that are fundamentally not structured that way, but we do the best we can.</p>
+<p>The only plausible other library around at the time that did some of this was 
+<a href="https://github.com/PyFilesystem/pyfilesystem2"><code>pyfilesystem</code></a>, aka <code>fs</code>. They were
+not amenable to consider some of <code>dasks</code>'s requirements such as serializability, 
+unfortunately.</p>
+<p>The final list of main features is at <a href="https://filesystem-spec.readthedocs.io/en/latest/features.html">https://filesystem-spec.readthedocs.io/en/latest/features.html</a> .</p>
+<h2>Adoption</h2>
+<p>Anaconda at the time was a lovely place to launch this idea. Not only did <code>dask</code> adopt the
+newly-born <code>fsspec</code> (of course, it was designed for it), but we had contributors to
+<code>pandas</code>, <code>xarray</code> and other important python/data libraries. Since there was really no other
+way to dispatch IO to different storage systems at the backend, but most libraries supported
+writing to a generic file-like object (i.e., one that matches the python builtin file type),
+it was simple to extend their various read/write functions to take general URLs and 
+call <code>fsspec</code>. Of course, I had a direct hand in <code>zarr</code> and <code>parquet</code> integration;
+I think it's fair to say that, together, we bootstrapped the "cloud native"
+era for python.</p>
+<p>From there, it was a fairly straight-forward process of adding features, more
+backends, and strengthening the code. Some of these new features ended up being
+more widely used than others! I think the hardest part throughout was probably
+the around caching of file listings.</p>
+<p>One major switch along the way, was implementing an <code>syncio</code>-based backend for 
+cloud storage (s3, gcs, azure, http). This produced an immense speedup for bulk operations
+(upload, download, copy, delete) on many small files; but this made very little 
+difference to calling code using the file-like interface, at least until we
+can upstream the <a href="https://gcsfs.readthedocs.io/en/latest/prefetcher.html">prefetcher</a>
+from <code>gcsfs</code> to <code>fsspec</code>.</p>
+<h2>Status</h2>
+<p><code>fsspec</code> gets 700M downloads per month as of April 2026 
+(see <a href="https://hugovk.dev/top-pypi-packages/">here</a>). The full set of known
+implementations are listed <a href="https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations">here</a> 
+(internal) and <a href="https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations">here</a>
+(external).</p>
+<p>We have institutional buy-in from Microsoft, Google, HuggingFace; many contributors have
+weighed in along the years, and the packages are depend on by a large number of other libraries.
+I think we can say, that <code>fsspec</code> does a thing well (or well enough), limits its scope
+to just that functionality, and provides a useful convenience to other developers. Some
+of the success surely is from time&amp;place,</p>
+<h2>Thoughts</h2>
+<p>Interested in my work? See the range of things <a href="https://docs.google.com/document/d/1ZxEbh_S_vwEEbRCadfHXOGo7Rq_Ckk--p_T6sYNbdDw/edit?tab=t.0">I work on</a>
+in a public docs page.</p>
+
+  </div>
+
+
+
+<link rel="stylesheet" href="../../static/pygments.css">
+
+
+
+  </div>
+  <footer>
+    &copy; Copyright 2026 by Martin Durant.
+  </footer>
+<script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
+</script>
+</body>
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">

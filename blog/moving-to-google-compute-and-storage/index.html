@@ -66,7 +66,7 @@
 <p>... and in the browser go to the external IP of the jupyter-notebook service, port 8888. Note that the password was baked into the supplied config/jupyter_notebook_config.py in the docker image.</p>
 <h2>Transferring data</h2>
 <p>Let's take one of the typical datasets often referenced in dataframe examples: NYC taxi data. In this case we pick just 2014 "green" data, stored in S3 as CSVs. This should seem familiar to anyone who has come across dask-dataframe workflows before. We use <a href="http://s3fs.readthedocs.io/en/latest/">s3fs</a> for access.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">s3fs</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">s3fs</span>
 <span class="n">s3</span> <span class="o">=</span> <span class="n">s3fs</span><span class="o">.</span><span class="n">S3FileSystem</span><span class="p">(</span><span class="n">anon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 <div class="hll"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">size</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">s3</span><span class="o">.</span><span class="n">du</span><span class="p">(</span><span class="s1">&#39;blaze-data/nyc-taxi/csv/&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="s1">&#39;green_&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">)</span>
@@ -92,7 +92,7 @@
 2014-01-01 00:00:00,2014-01-01 00:01:15,N,1,0,0,-73.912155151367188,40.684059143066406,2,
 </code></pre>
 <div class="hll"><pre><span></span><span class="c1"># prescribe the dataframe with some typical CSV ingest options</span>
-<span class="kn">import</span> <span class="nn">dask.dataframe</span> <span class="k">as</span> <span class="nn">dd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dask.dataframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dd</span>
 <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Store_and_fwd_flag&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">,</span> <span class="s1">&#39;Passenger_count&#39;</span><span class="p">:</span> <span class="s1">&#39;uint8&#39;</span><span class="p">,</span> <span class="s1">&#39;Payment_type&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">,</span> <span class="s1">&#39;Trip_type&#39;</span><span class="p">:</span> <span class="s1">&#39;float32&#39;</span><span class="p">,</span> <span class="s1">&#39;RateCodeID&#39;</span><span class="p">:</span> <span class="s1">&#39;category&#39;</span><span class="p">}</span>
 <span class="n">dtype</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">f</span><span class="p">:</span> <span class="s1">&#39;float32&#39;</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;Fare_aamount&#39;</span><span class="p">,</span> <span class="s1">&#39;Extra&#39;</span><span class="p">,</span> <span class="s1">&#39;MTA_tax&#39;</span><span class="p">,</span> <span class="s1">&#39;Tip_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Tolls_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Ehail_fee&#39;</span><span class="p">,</span> <span class="s1">&#39;Total_amount&#39;</span><span class="p">,</span> <span class="s1">&#39;Trip_distance&#39;</span><span class="p">,</span> <span class="s1">&#39;Distance_between_service&#39;</span><span class="p">]})</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">dd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;s3://blaze-data/nyc-taxi/csv/green*csv&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
@@ -126,14 +126,14 @@
  dtype: object,
 </code></pre>
 <div class="hll"><pre><span></span><span class="c1"># Test token on the local filesystem to log into GCS</span>
-<span class="kn">import</span> <span class="nn">gcsfs</span>
-<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gcsfs</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="n">token</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;application_default_credentials.json&#39;</span><span class="p">))</span>
 <span class="n">gcs</span> <span class="o">=</span> <span class="n">gcsfs</span><span class="o">.</span><span class="n">GCSFileSystem</span><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="s1">&#39;continuum=compute&#39;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">)</span>
 </pre></div>
 <div class="hll"><pre><span></span><span class="c1"># Perform operations on the whole cluster</span>
 <span class="c1"># &#39;dask-scheduler&#39; is a known IP within a container</span>
-<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">progress</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">progress</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="s1">&#39;dask-scheduler:8786&#39;</span><span class="p">)</span>
 <span class="n">c</span>
 </pre></div>
@@ -154,7 +154,7 @@
 </code></pre>
 <h2>Investigate the output</h2>
 <p>We can choose to interrogate a parquet dataset on GCS directly with fastparquet: notice that we know the data-types, total number of rows and any partitioning before loading any of the data.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastparquet</span>
 <span class="n">pf</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;temporary_output/NYC.parq&#39;</span><span class="p">,</span> <span class="n">open_with</span><span class="o">=</span><span class="n">gcs</span><span class="o">.</span><span class="n">open</span><span class="p">)</span>
 <span class="n">pf</span>
 </pre></div>
@@ -581,7 +581,7 @@ Name: tip_percent, dtype: float64
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

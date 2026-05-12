@@ -54,7 +54,7 @@
 <p>We will introduce the two functions that will most commonly be used within fastparquet, followed by a discussion of the current Big Data landscape, python's place within it, and then details of how fastparquet fills one of the gaps on the way to building out a full end-to-end Big Data pipeline in python.</p>
 <h2>Teaser</h2>
 <p>New users of fastparquet will mainly use the functions <code>write</code> and <code>ParquetFile.to_pandas</code>. Both functions offer good performance with default values and both have a number of options to improve performance further.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastparquet</span>
 
 <span class="c1"># write data</span>
 <span class="n">fastparquet</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;SNAPPY&#39;</span><span class="p">)</span>
@@ -89,15 +89,15 @@ Parquet provides several advantages relevant to big-data processing:</p>
 <p>Until now, Spark's Python interface provided the only way to write Spark files from Python.
 Much of the time is spent in de/serializing the data in the Java-Python bridge. Also note that the times column returned is now just integers rather than the correct datetime type. Not only does fastparquet provide native access to parquet files, it in fact makes the transfer of data to spark much faster.</p>
 <div class="hll"><pre><span></span><span class="c1"># to make and save a large-ish DataFrame</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="n">N</span> <span class="o">=</span> <span class="mi">10000000</span>
 
 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;ints&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">N</span><span class="p">),</span>
                    <span class="s1">&#39;floats&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
                    <span class="s1">&#39;times&#39;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;1980&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">N</span><span class="p">)})</span>
 </pre></div>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">pyspark</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pyspark</span>
 <span class="n">sc</span> <span class="o">=</span> <span class="n">pyspark</span><span class="o">.</span><span class="n">SparkContext</span><span class="p">()</span>
 <span class="n">sql</span> <span class="o">=</span> <span class="n">pyspark</span><span class="o">.</span><span class="n">SQLContext</span><span class="p">(</span><span class="n">sc</span><span class="p">)</span>
 </pre></div>
@@ -128,7 +128,7 @@ Wall time: 3.27 s
 </ul>
 <p>Bleeding edge installation directly from the GitHub repo is also supported, so long as Numba, pandas, pytest and ThriftPy are installed.</p>
 <p>Reading parquet files into pandas is simple and, again, much faster than via pySpark serialization.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastparquet</span>
 <span class="n">pfile</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;out.parq&#39;</span><span class="p">)</span>
 <span class="o">%</span><span class="n">time</span> <span class="n">df2</span> <span class="o">=</span> <span class="n">pfile</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
 </pre></div>
@@ -171,7 +171,7 @@ part.10.parquet   part.16.parquet   part.21.parquet   part.8.parquet
 part.11.parquet   part.17.parquet   part.3.parquet    part.9.parquet
 </code></pre>
 <p>To load the metadata:</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fastparquet</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastparquet</span>
 <span class="n">pf</span> <span class="o">=</span> <span class="n">fastparquet</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s1">&#39;airlines-parq&#39;</span><span class="p">)</span>
 </pre></div>
 <p>The ParquetFile instance provides various information about the data-set in attributes:</p>
@@ -249,7 +249,7 @@ Wall time: 1.59 s
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

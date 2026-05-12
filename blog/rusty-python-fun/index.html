@@ -74,7 +74,7 @@ an array of strings.</p>
 <div class="hll"><pre><span></span><span class="gp">$ </span>./make
 </pre></div>
 <p>and the simplest function (note that inputs and outputs here are unicode - this is running on py3)</p>
-<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">cytest</span>
+<div class="hll"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">cytest</span>
 
 <span class="o">&gt;&gt;&gt;</span> <span class="n">cytest</span><span class="o">.</span><span class="n">call_rust_upper</span><span class="p">(</span><span class="s1">&#39;hello&#39;</span><span class="p">)</span>
 <span class="s1">&#39;HELLO&#39;</span>
@@ -103,12 +103,12 @@ or vectors of strings within Rust.</p>
 work with the python object, we need to both be able to get a pointer to the string out,
 and construct a new instance with the result from Rust. This looks like:</p>
 <p>Cython</p>
-<div class="hll"><pre><span></span><span class="kn">from</span> <span class="nn">cpython</span> <span class="n">cimport</span> <span class="n">PyUnicode_AsUTF8String</span><span class="p">,</span> <span class="n">PyUnicode_InternFromString</span>
+<div class="hll"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">cpython</span> <span class="n">cimport</span> <span class="n">PyUnicode_AsUTF8String</span><span class="p">,</span> <span class="n">PyUnicode_InternFromString</span>
 
 <span class="n">cdef</span> <span class="n">extern</span><span class="p">:</span>
     <span class="n">char</span> <span class="o">*</span><span class="n">my_upper</span><span class="p">(</span><span class="n">char</span> <span class="o">*</span><span class="n">b</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">call_rust_upper</span><span class="p">(</span><span class="n">unicode</span> <span class="n">s</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">call_rust_upper</span><span class="p">(</span><span class="n">unicode</span> <span class="n">s</span><span class="p">):</span>
     <span class="n">cdef</span> <span class="n">unicode</span> <span class="n">out</span>
     <span class="k">return</span> <span class="n">PyUnicode_InternFromString</span><span class="p">(</span><span class="n">my_upper</span><span class="p">(</span><span class="n">PyUnicode_AsUTF8String</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
 </pre></div>
@@ -176,7 +176,7 @@ lists-of-strings in a parquet column, for example, all the better.</p>
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

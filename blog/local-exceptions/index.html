@@ -55,14 +55,14 @@
 <p><a href="http://dask.pydata.org">Dask</a>'s <a href="http://distributed.readthedocs.io/en/latest/setup.html">distributed</a> scheduler is easy to hack for a distributed computation engine, and here I'll demonstrate a new feature which allows you to pull just the part of a failed computation responsible for an exception into the local thread, so that you can do real debugging.</p>
 <h2>Let's make an error</h2>
 <p>Here is a typical workflow: we may wrap functions in <code>dask.delayed</code> to define a computation for parallel execution. The output variable <code>out</code> (which hasn't been executed yet) carries the definition of all the tasks that are to be carried out.</p>
-<div class="hll"><pre><span></span><span class="kn">from</span> <span class="nn">dask</span> <span class="kn">import</span> <span class="n">delayed</span>
-<span class="kn">from</span> <span class="nn">dask.distributed</span> <span class="kn">import</span> <span class="n">Client</span>
+<div class="hll"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dask</span><span class="w"> </span><span class="kn">import</span> <span class="n">delayed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dask.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># default cluster, some local processes</span>
 </pre></div>
-<div class="hll"><pre><span></span><span class="k">def</span> <span class="nf">dec</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<div class="hll"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">dec</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">1</span>
 
-<span class="k">def</span> <span class="nf">recip</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">recip</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
     <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">x</span>
 
 <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">76</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
@@ -120,7 +120,7 @@ ZeroDivisionError: division by zero
 </code></pre>
 <h2>Debugging?</h2>
 <p>Actually, that's the stack-trace from the worker process, but we can't run <code>debug</code> now, the exception didn't hapen in our main process/thread. Until now, the recommended course of action would have been to execute the whole computation graph in the local thread as follows:</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
 <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">dask</span><span class="o">.</span><span class="k">async</span><span class="o">.</span><span class="n">get_sync</span><span class="p">):</span>
     <span class="n">out</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
 </pre></div>
@@ -191,7 +191,7 @@ ZeroDivisionError: division by zero
  &lt;Future: status: error, key: sum-0029496e8d105b2ccc25156278d931f4&gt;)
 </code></pre>
 <p>This method doesn't play well with collections, though, where you don't have easy access to the intermediates. Below is the same calculation: <code>bag2</code> points a future, each of which is the result of more than one task, things are not simple</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask.bag</span> <span class="k">as</span> <span class="nn">db</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dask.bag</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">db</span>
 <span class="n">bag</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">from_sequence</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
 <span class="n">bag2</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">persist</span><span class="p">(</span><span class="n">bag</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">recip</span><span class="p">))</span>
 <span class="n">bag2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
@@ -208,7 +208,7 @@ ZeroDivisionError: division by zero
 ZeroDivisionError: division by zero
 </code></pre>
 <p>and our previous best method also fails, because <code>bag2</code> depends on data held on the cluster, not locally.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">dask</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
 <span class="k">with</span> <span class="n">dask</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">dask</span><span class="o">.</span><span class="k">async</span><span class="o">.</span><span class="n">get_sync</span><span class="p">):</span>
     <span class="n">bag2</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
 </pre></div>
@@ -292,7 +292,7 @@ ZeroDivisionError: division by zero
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>

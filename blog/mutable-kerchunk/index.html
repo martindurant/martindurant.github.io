@@ -83,8 +83,8 @@ to produce some JSON reference sets. We'll only use one of them here.
 Let's open one of the datasets using zarr. It contains one big data array
 and smaller coordinate arrays. I <strong>do not</strong> have permission to change
 the original data in place.</p>
-<div class="hll"><pre><span></span><span class="kn">import</span> <span class="nn">fsspec</span>
-<span class="kn">import</span> <span class="nn">zarr</span>
+<div class="hll"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fsspec</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zarr</span>
 <span class="n">so</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;anon&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 <span class="n">fs</span> <span class="o">=</span> <span class="n">fsspec</span><span class="o">.</span><span class="n">filesystem</span><span class="p">(</span>
     <span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="n">fo</span><span class="o">=</span><span class="s2">&quot;01_air_pressure_at_mean_sea_level.json&quot;</span><span class="p">,</span> 
@@ -161,7 +161,7 @@ version control system for array data, but perhaps part of one.</p>
 
   </div>
   <footer>
-    &copy; Copyright 2024 by Martin Durant.
+    &copy; Copyright 2026 by Martin Durant.
   </footer>
 <script data-goatcounter="https://md-blog.goatcounter.com/count" async src="//gc.zgo.at/count.js">
 </script>
