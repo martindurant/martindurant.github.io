@@ -92,23 +92,37 @@ from `gcsfs` to `fsspec`.
 Status
 ------
 
-`fsspec` gets 700M downloads per month as of April 2026 
+`fsspec` gets about 700M downloads per month as of April 2026 
 (see [here](https://hugovk.dev/top-pypi-packages/)). The full set of known
 implementations are listed [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations) 
 (internal) and [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations)
-(external).
+(external) - it's a long list indeed. 
 
-We have institutional buy-in from Microsoft, Google, HuggingFace; many contributors have
+We have institutional buy-in from Microsoft, Google, HuggingFace and others; many contributors have
 weighed in along the years, and the packages are depend on by a large number of other libraries.
 I think we can say, that `fsspec` does a thing well (or well enough), limits its scope
 to just that functionality, and provides a useful convenience to other developers. Some
 of the success surely is from time&place, 
 
+It seems that storage, as a theme, is having a bit of a moment right now. Some of this
+is squarely pushing `fsspec` forward (such as the `gcsfs` work with Google, mentioned above),
+some of it broadening the possibilities (such as [s3files](https://aws.amazon.com/s3/features/files/))
+and some inbetween (such as [huggingface buckets](https://huggingface.co/docs/huggingface_hub/en/guides/buckets)).
+I am at a loss as to why this is happening now, but it's fun to see!
+
+`fsspec` continues as a more-or-less solo operation. There are many contributors and a lot of activity,
+but still no formal governance structure (no concil, no numFOCUS affiliation). Anaconda continues
+to be the biggest financial supporter, by paying my salary.
+
 Thoughts
 --------
 
-Interested in my work? See the range of things [I work on](https://docs.google.com/document/d/1ZxEbh_S_vwEEbRCadfHXOGo7Rq_Ckk--p_T6sYNbdDw/edit?tab=t.0)
-in a public docs page.
+Ten years is a long time to be running a project! I had not anticipated the reach that `fsspec`
+would have and perhaps I would have made different choices if I had. I am proud of the usage
+and community that `fsspec` fits into, and this is already a good run for a tool meant as
+a decent convenience for others. 
+
+
 
 ---
 author: Martin Durant
