@@ -47,11 +47,11 @@
     
       Martin Durant
     
-    on 2026-05-12
+    on 2026-05-19
   </p>
   <p>This is a description of how <code>fsspec</code> came to be, why it is like it is, and
 how the journey has been for me. Consider it a 10-year gift. This follows a
-period of surprising activity in python remote storage, not least advances
+period of surprising activity in python remote storage, not least, advances
 in <a href="https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/">gcsfs rapid buckets</a>.</p>
 <h2>Origins</h2>
 <p>When I arrived at Anaconda (formerly Continuum Analytics) in 2015, I started as an
@@ -65,7 +65,7 @@ bytes in storage; and integration with the <code>parquet</code> tabular data sto
 well as ways to deploy to AWS, YARN clusters and others.</p>
 <p>(The parquet library would become <a href="https://github.com/dask/fastparquet"><code>fastparquet</code></a>,
 the pioneering and leading parquet library for python for several years. But that's
-another story. Similar story for other utilities like <code>knit</code>, <code>dask-yarn</code>, 
+another story. There is a similar story for other utilities like <code>knit</code>, <code>dask-yarn</code>, 
 <code>dask-gateway</code> and more.)</p>
 <p>The first non-standard storage of concern was Hadoop's own HDFS.
 Luckily, the C library <a href="https://github.com/erikmuttersbach/libhdfs3"><code>libhdfs3</code></a> had
@@ -76,7 +76,7 @@ of not needing a compilation step, and the API being wrapped was simple enough t
 well. <a href="https://github.com/dask/hdfs3"><code>hdfs3</code></a> was my first filesystem.</p>
 <h2>Design</h2>
 <p>The initial code inside <code>dask.bytes</code> provided a uniform interface to different storage
-backends, so that the rest of <code>dask</code> could make use of them. Some important considerations</p>
+backends, so that the rest of <code>dask</code> could make use of them. Some important considerations:</p>
 <ul>
 <li>dispatch based on the protocol of a URL ("s3://" is not the same as "hdfs://")</li>
 <li>serializable filesystems and file-like instances, so they could be distributed to
@@ -109,30 +109,52 @@ it was simple to extend their various read/write functions to take general URLs 
 call <code>fsspec</code>. Of course, I had a direct hand in <code>zarr</code> and <code>parquet</code> integration;
 I think it's fair to say that, together, we bootstrapped the "cloud native"
 era for python.</p>
+<p>I certainly had no idea that it would take off — it was meant to be just a means to an end. 
+Some of that must be down to luck and circumstance, but also providing something genuinely useful.
+Usage built slowly over time, and I wasn't really aware of it (we continue not to see many issues
+compared to other OSS projects) until relatively recently. Unlike other efforts I have led —
+good ideas that ought to have users — I have not taken <code>fsspec</code> to conferences or done anything particular
+to attract users, downstream libraries or contributors. Maybe this led me to falsely believe that
+users would flock to everything I made...</p>
 <p>From there, it was a fairly straight-forward process of adding features, more
 backends, and strengthening the code. Some of these new features ended up being
 more widely used than others! I think the hardest part throughout was probably
 the around caching of file listings.</p>
-<p>One major switch along the way, was implementing an <code>syncio</code>-based backend for 
+<p>One major switch along the way, was implementing an <code>asyncio</code>-based backend for 
 cloud storage (s3, gcs, azure, http). This produced an immense speedup for bulk operations
 (upload, download, copy, delete) on many small files; but this made very little 
 difference to calling code using the file-like interface, at least until we
 can upstream the <a href="https://gcsfs.readthedocs.io/en/latest/prefetcher.html">prefetcher</a>
 from <code>gcsfs</code> to <code>fsspec</code>.</p>
 <h2>Status</h2>
-<p><code>fsspec</code> gets 700M downloads per month as of April 2026 
+<p><code>fsspec</code> gets about 700M downloads per month as of April 2026 
 (see <a href="https://hugovk.dev/top-pypi-packages/">here</a>). The full set of known
 implementations are listed <a href="https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations">here</a> 
 (internal) and <a href="https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations">here</a>
-(external).</p>
-<p>We have institutional buy-in from Microsoft, Google, HuggingFace; many contributors have
+(external) — it's a long list indeed.</p>
+<p>We have institutional buy-in from Microsoft, Google, HuggingFace and others. 
+Essentially, they all came to me when they realised that users values <code>fsspec</code> as part of their
+work on their respective platforms. (Notice I've never heard anything from AWS)
+Many contributors have
 weighed in along the years, and the packages are depend on by a large number of other libraries.
 I think we can say, that <code>fsspec</code> does a thing well (or well enough), limits its scope
-to just that functionality, and provides a useful convenience to other developers. Some
-of the success surely is from time&amp;place,</p>
+to just that functionality, and provides a useful convenience to other developers.</p>
+<p>Although I have continued to maintain the repos throughout (with occasional co-admins), I do also
+want to make new features and totally new things, so sometimes "just maintenance" can definitely
+be onerous.
+<code>fsspec</code> continues as a more-or-less solo operation. There are many contributors and a lot of activity,
+but still no formal governance structure (no council, no numFOCUS affiliation). Anaconda continues
+to be the biggest financial supporter, by paying my salary.</p>
+<p>It seems that storage, as a theme, is having a bit of a moment right now. Some of this
+is squarely pushing <code>fsspec</code> forward (such as the <code>gcsfs</code> work with Google, mentioned above),
+some of it broadening the possibilities (such as <a href="https://aws.amazon.com/s3/features/files/">s3files</a>)
+and some inbetween (such as <a href="https://huggingface.co/docs/huggingface_hub/en/guides/buckets">huggingface buckets</a>).
+I am at a loss as to why this is happening now, but it's fun to see!</p>
 <h2>Thoughts</h2>
-<p>Interested in my work? See the range of things <a href="https://docs.google.com/document/d/1ZxEbh_S_vwEEbRCadfHXOGo7Rq_Ckk--p_T6sYNbdDw/edit?tab=t.0">I work on</a>
-in a public docs page.</p>
+<p>Ten years is a long time to be running a project! I had not anticipated the reach that <code>fsspec</code>
+would have and perhaps I would have made different choices if I had. I am proud of the usage
+and community that <code>fsspec</code> fits into, and this is already a good run for a tool meant as
+a decent convenience for others.</p>
 
   </div>
 
