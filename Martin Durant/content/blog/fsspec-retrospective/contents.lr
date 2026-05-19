@@ -4,7 +4,7 @@ body:
 
 This is a description of how ``fsspec`` came to be, why it is like it is, and
 how the journey has been for me. Consider it a 10-year gift. This follows a
-period of surprising activity in python remote storage, not least advances
+period of surprising activity in python remote storage, not least, advances
 in [gcsfs rapid buckets](https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/).
 
 
@@ -24,7 +24,7 @@ well as ways to deploy to AWS, YARN clusters and others.
 
 (The parquet library would become [`fastparquet`](https://github.com/dask/fastparquet),
 the pioneering and leading parquet library for python for several years. But that's
-another story. Similar story for other utilities like `knit`, `dask-yarn`, 
+another story. There is a similar story for other utilities like `knit`, `dask-yarn`, 
 `dask-gateway` and more.)
 
 The first non-standard storage of concern was Hadoop's own HDFS.
@@ -39,7 +39,7 @@ Design
 ------
 
 The initial code inside `dask.bytes` provided a uniform interface to different storage
-backends, so that the rest of `dask` could make use of them. Some important considerations
+backends, so that the rest of `dask` could make use of them. Some important considerations:
 - dispatch based on the protocol of a URL ("s3://" is not the same as "hdfs://")
 - serializable filesystems and file-like instances, so they could be distributed to
 `dask` workers
@@ -77,12 +77,20 @@ call `fsspec`. Of course, I had a direct hand in `zarr` and `parquet` integratio
 I think it's fair to say that, together, we bootstrapped the "cloud native"
 era for python.
 
+I certainly had no idea that it would take off — it was meant to be just a means to an end. 
+Some of that must be down to luck and circumstance, but also providing something genuinely useful.
+Usage built slowly over time, and I wasn't really aware of it (we continue not to see many issues
+compared to other OSS projects) until relatively recently. Unlike other efforts I have led —
+good ideas that ought to have users — I have not taken `fsspec` to conferences or done anything particular
+to attract users, downstream libraries or contributors. Maybe this led me to falsely believe that
+users would flock to everything I made...
+
 From there, it was a fairly straight-forward process of adding features, more
 backends, and strengthening the code. Some of these new features ended up being
 more widely used than others! I think the hardest part throughout was probably
 the around caching of file listings.
 
-One major switch along the way, was implementing an `syncio`-based backend for 
+One major switch along the way, was implementing an `asyncio`-based backend for 
 cloud storage (s3, gcs, azure, http). This produced an immense speedup for bulk operations
 (upload, download, copy, delete) on many small files; but this made very little 
 difference to calling code using the file-like interface, at least until we
@@ -96,23 +104,28 @@ Status
 (see [here](https://hugovk.dev/top-pypi-packages/)). The full set of known
 implementations are listed [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#built-in-implementations) 
 (internal) and [here](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations)
-(external) - it's a long list indeed. 
+(external) — it's a long list indeed. 
 
-We have institutional buy-in from Microsoft, Google, HuggingFace and others; many contributors have
+We have institutional buy-in from Microsoft, Google, HuggingFace and others. 
+Essentially, they all came to me when they realised that users values `fsspec` as part of their
+work on their respective platforms. (Notice I've never heard anything from AWS)
+Many contributors have
 weighed in along the years, and the packages are depend on by a large number of other libraries.
 I think we can say, that `fsspec` does a thing well (or well enough), limits its scope
-to just that functionality, and provides a useful convenience to other developers. Some
-of the success surely is from time&place, 
+to just that functionality, and provides a useful convenience to other developers.
+
+Although I have continued to maintain the repos throughout (with occasional co-admins), I do also
+want to make new features and totally new things, so sometimes "just maintenance" can definitely
+be onerous.
+`fsspec` continues as a more-or-less solo operation. There are many contributors and a lot of activity,
+but still no formal governance structure (no council, no numFOCUS affiliation). Anaconda continues
+to be the biggest financial supporter, by paying my salary.
 
 It seems that storage, as a theme, is having a bit of a moment right now. Some of this
 is squarely pushing `fsspec` forward (such as the `gcsfs` work with Google, mentioned above),
 some of it broadening the possibilities (such as [s3files](https://aws.amazon.com/s3/features/files/))
 and some inbetween (such as [huggingface buckets](https://huggingface.co/docs/huggingface_hub/en/guides/buckets)).
 I am at a loss as to why this is happening now, but it's fun to see!
-
-`fsspec` continues as a more-or-less solo operation. There are many contributors and a lot of activity,
-but still no formal governance structure (no concil, no numFOCUS affiliation). Anaconda continues
-to be the biggest financial supporter, by paying my salary.
 
 Thoughts
 --------
@@ -123,8 +136,7 @@ and community that `fsspec` fits into, and this is already a good run for a tool
 a decent convenience for others. 
 
 
-
 ---
 author: Martin Durant
 ---
-pub_date: 2026-05-12
+pub_date: 2026-05-19
